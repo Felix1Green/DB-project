@@ -21,9 +21,9 @@ type Service struct {
 func configureRouter(handler *delivery.UserDelivery) *mux.Router{
 	router := mux.NewRouter()
 
-	router.HandleFunc(fmt.Sprintf("/api/user/{%s:[0-9]+}/create/", users.NickNamePath),handler.CreateUser)
-	router.HandleFunc(fmt.Sprintf("/api/user/{%s:[0-9]+}/profile/", users.NickNamePath),handler.GetUser).Methods(http.MethodGet)
-	router.HandleFunc(fmt.Sprintf("/api/user/{%s:[0-9]+}/profile/", users.NickNamePath),handler.UpdateUser).Methods(http.MethodPost)
+	router.HandleFunc(fmt.Sprintf("/api/user/{%s:.+}/create/", users.NickNamePath),handler.CreateUser)
+	router.HandleFunc(fmt.Sprintf("/api/user/{%s:.+}/profile/", users.NickNamePath),handler.GetUser).Methods(http.MethodGet)
+	router.HandleFunc(fmt.Sprintf("/api/user/{%s:.+}/profile/", users.NickNamePath),handler.UpdateUser).Methods(http.MethodPost)
 
 	return router
 }

@@ -10,3 +10,11 @@ services:
     volumes:
       - ./init/:/docker-entrypoint-initdb.d/
   app:
+    image: dev_db_image
+    ports:
+    - 8080:8080
+    restart: on-failure
+    env_file:
+    - ./init/database.env
+    volumes:
+    - ./:/app

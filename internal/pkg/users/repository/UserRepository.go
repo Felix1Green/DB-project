@@ -59,7 +59,7 @@ func (t *UserRepository) GetProfile(nickname string) (*models.User, error) {
 
 func (t *UserRepository) UpdateProfile(nickname string, user *models.UserRequestBody) (*models.User, error) {
 	query := "UPDATE users SET fullname=$1, about=$2, email=$3 where nickname=$4 returning nickname"
-	result := t.dbConnection.QueryRow(query, nickname, user.FullName, user.About, user.Email)
+	result := t.dbConnection.QueryRow(query, user.FullName, user.About, user.Email, nickname)
 	if result.Err() != nil {
 		return nil, models.UserConflict
 	}

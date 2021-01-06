@@ -16,7 +16,6 @@ func ServerErrorResponse(err error, statusCode int, w http.ResponseWriter){
 		Message: err.Error(),
 	})
 	_, _ = w.Write(outputErr)
-	w.WriteHeader(statusCode)
 }
 
 
