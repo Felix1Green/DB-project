@@ -1,0 +1,12 @@
+version: '3.7'
+services:
+  postgresql:
+    image: postgres
+    ports:
+      - 5432:5432
+    restart: on-failure
+    env_file:
+      - ./init/database.env
+    volumes:
+      - ./init/:/docker-entrypoint-initdb.d/
+  app:

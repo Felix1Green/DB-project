@@ -1,0 +1,11 @@
+{
+  "Domain": "app",
+  "Port": 8080,
+  "Database": {
+    "Domain": "postgresql",
+    "Port": "5432",
+    "User": "main_user",
+    "Password": "some_password",
+    "Name":"ForumDatabase"
+  }
+}
