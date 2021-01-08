@@ -4,6 +4,7 @@ import (
 	"github.com/Felix1Green/DB-project/internal/pkg/forum"
 	"github.com/Felix1Green/DB-project/internal/pkg/models"
 	"github.com/Felix1Green/DB-project/internal/pkg/users"
+	"github.com/Felix1Green/DB-project/internal/pkg/utils"
 )
 
 type ForumUseCase struct {
@@ -44,7 +45,29 @@ func (t *ForumUseCase) CreateForumThread(slug string, thread *models.ThreadReque
 		return nil, models.IncorrectInputParams
 	}
 
-	return t.repository.CreateForumThread(slug, thread)
+	isEmpty := false
+	if thread.Slug == ""{
+		isEmpty = true
+		thread.Slug = utils.RandStringRunes(13)
+	}
+
+	user, err := t.userRepository.GetProfile(thread.Author)
+	if err != nil{
+		return nil, models.NoSuchUser
+	}
+
+	thread.Author = user.Nickname
+
+	forumObj, err := t.repository.GetForum(slug)
+	if err != nil{
+		return nil, models.ForumDoesntExists
+	}
+	slug = forumObj.Slug
+	result, err :=  t.repository.CreateForumThread(slug, thread)
+	if result != nil && isEmpty{
+		result.Slug = ""
+	}
+	return result, err
 }
 
 func (t *ForumUseCase) GetForumUsers(slug string, limit, since int, desc bool) (*[]models.User, error) {

@@ -25,7 +25,7 @@ create table thread
     message text,
     forum citext references forum(slug),
     votes_counter int default 0,
-    slug citext not null default '',
+    slug citext unique,
     created timestamp with time zone default now()
 );
 

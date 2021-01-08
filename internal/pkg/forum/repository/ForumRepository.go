@@ -3,7 +3,6 @@ package repository
 import (
 	"database/sql"
 	"github.com/Felix1Green/DB-project/internal/pkg/models"
-	"log"
 )
 
 type ForumRepository struct {
@@ -52,7 +51,6 @@ func (t *ForumRepository) GetForum(slug string) (*models.Forum, error) {
 		return nil, models.ForumDoesntExists
 	}
 
-	log.Printf("%v \n", res)
 	return res,nil
 }
 
@@ -66,20 +64,20 @@ func (t *ForumRepository) CreateForumThread(slug string, thread *models.ThreadRe
 		query = "INSERT INTO Thread (title, author, message, forum,slug, created) VALUES ($1,$2,$3,$4,$5,$6) RETURNING ID, CREATED"
 		queryArgs = append(queryArgs, thread.Created)
 	}
-	uniqueErrQuery := "SELECT v1.id, v1.title, v1.author, v1.forum, v1.message, COUNT(v2.id), v1.created " +
-		"FROM Thread v1 JOIN post v2 on(v2.thread = v1.id) WHERE v1.title = $1"
+	uniqueErrQuery := "SELECT v1.id, v1.title, v1.author, v1.forum, v1.message, COUNT(v2.id), v1.created, v1.slug " +
+		"FROM Thread v1 LEFT JOIN post v2 on(v2.thread = v1.id) WHERE v1.slug = $1 GROUP BY v1.id"
 
 	result := t.dbConnection.QueryRow(query, queryArgs...)
 	var resultID uint64
 	var created string
 	if result.Err() != nil || result.Scan(&resultID, &created) != nil{
 		resultThread := new(models.ThreadModel)
-		scanErr := t.dbConnection.QueryRow(uniqueErrQuery, thread.Title).Scan(&resultThread.ID, &resultThread.Title,
-			&resultThread.Author, &resultThread.Forum,&resultThread.Message, &resultThread.Votes, &resultThread.Created)
+		scanErr := t.dbConnection.QueryRow(uniqueErrQuery, thread.Slug).Scan(&resultThread.ID, &resultThread.Title,
+			&resultThread.Author, &resultThread.Forum,&resultThread.Message, &resultThread.Votes, &resultThread.Created, &resultThread.Slug)
 		if scanErr != nil{
 			return nil, models.ForumDoesntExists
 		}
-		return resultThread, models.ForumAlreadyExists
+		return resultThread, models.ThreadUniqueErr
 	}
 	return &models.ThreadModel{
 		ID: resultID,

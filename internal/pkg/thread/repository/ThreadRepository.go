@@ -2,7 +2,6 @@ package repository
 
 import (
 	"database/sql"
-	"github.com/lib/pq"
 	"fmt"
 	"github.com/Felix1Green/DB-project/internal/pkg/models"
 	"log"
@@ -40,11 +39,12 @@ func (t* ThreadRepository) CreatePosts(slug uint64, forumName string, body *[]mo
 		return nil, models.InternalDBError
 	}
 
-	insertQuery := "INSERT INTO ticket (parent,author,message,thread,forum) VALUES %s"
+	insertQuery := "INSERT INTO post (parent,author,message,thread,forum) VALUES %s"
 	resultQuery, values := bulkPostInsert(*body, insertQuery, forumName, slug)
 	resultQuery += " RETURNING id, created"
-	rows, DBErr := t.DBConnection.Query(resultQuery, values)
+	rows, DBErr := t.DBConnection.Query(resultQuery, *values...)
 	if DBErr != nil || rows == nil || rows.Err() != nil{
+		log.Println("CREATE POSTS", DBErr)
 		return nil, models.ParentPostDoesntExists
 	}
 	resultList := make([]models.PostModel, 0)
@@ -64,23 +64,49 @@ func (t* ThreadRepository) CreatePosts(slug uint64, forumName string, body *[]mo
 	return &resultList, nil
 }
 
-func (t *ThreadRepository) CheckParentsExisting(parentsID []uint64) (bool,error){
+func (t *ThreadRepository) CreateSinglePost(slug uint64, forumName string, body models.PostCreateRequestInput)(*models.PostModel, error){
+	if t.DBConnection == nil{
+		return nil, models.InternalDBError
+	}
+
+	insertQuery := "INSERT INTO post (parent,author,message,thread,forum, created) VALUES ($1,$2,$3,$4,$5,$6) RETURNING id, created";
+	rows := t.DBConnection.QueryRow(insertQuery, body.Parent, body.Author, body.Message, slug, forumName, body.Created)
+	if rows == nil || rows.Err() != nil{
+		log.Println("CREATE POSTS")
+		return nil, models.ParentPostDoesntExists
+	}
+	result := new(models.PostModel)
+	scanErr := rows.Scan(&result.ID, &result.Created)
+	if scanErr != nil{
+		log.Println(scanErr)
+		return nil, models.InternalDBError
+	}
+	result.Author = body.Author
+	result.Message = body.Message
+	result.Parent = body.Parent
+	result.Forum = forumName
+	result.Thread = slug
+
+	return result, nil
+}
+
+func (t *ThreadRepository) CheckParentsExisting(parentsID uint64) (bool,error){
 	if t.DBConnection == nil{
 		return false, models.InternalDBError
 	}
 
-	query := "SELECT COUNT(id) from post where id IN($1)"
-	counter := t.DBConnection.QueryRow(query, pq.Array(parentsID))
+	query := "SELECT id from post where id = $1"
+	counter := t.DBConnection.QueryRow(query, parentsID)
 	if counter == nil || counter.Err() != nil{
 		return false, models.InternalDBError
 	}
 	var parentsCounter int = 0
 	ScanErr := counter.Scan(&parentsCounter)
 	if ScanErr != nil{
-		return false, models.InternalDBError
+		return false, models.ParentPostDoesntExists
 	}
 
-	return parentsCounter == len(parentsID), nil
+	return true, nil
 }
 
 
@@ -89,14 +115,14 @@ func (t *ThreadRepository) GetThreadDetails(slug uint64) (*models.ThreadModel, e
 		return nil, models.InternalDBError
 	}
 
-	query := "SELECT v1.ID, v1.title, v1.author, v1.forum, v1.message, v1.votes_counter, v1.created FROM thread v1 where ID = $1"
+	query := "SELECT v1.ID, v1.title, v1.author, v1.forum, v1.message, v1.votes_counter, v1.created, v1.slug FROM thread v1 where ID = $1"
 	resultRow := t.DBConnection.QueryRow(query, slug)
 	if resultRow.Err() != nil{
 		return nil, models.ThreadAbsentsError
 	}
 	resultItem := new(models.ThreadModel)
 	ScanErr := resultRow.Scan(&resultItem.ID, &resultItem.Title, &resultItem.Author, &resultItem.Forum, &resultItem.Message,
-		&resultItem.Votes, &resultItem.Created)
+		&resultItem.Votes, &resultItem.Created, &resultItem.Slug)
 	if ScanErr != nil{
 		return nil, models.ThreadAbsentsError
 	}
@@ -154,7 +180,7 @@ func (t *ThreadRepository) GetThreadPosts(threadID uint64, limit int, since int6
 		query += "AND v1.parent < $3 ORDER BY CASE WHEN v1.parent = 0 THEN v1.id ELSE v1.parent END, " +
 			"CASE WHEN v1.parent = 0 THEN 0 ELSE v1.id END "
 	}else{
-		query += "ORDER BY v1.created "
+		query += "ORDER BY v1.created,v1.id "
 	}
 	if desc {
 		query += "DESC "
@@ -163,6 +189,7 @@ func (t *ThreadRepository) GetThreadPosts(threadID uint64, limit int, since int6
 		query += "LIMIT $3 "
 	}
 
+	log.Println("QUERY ", query, sort, limit, desc, threadID, since)
 	resultRows, DBErr := t.DBConnection.Query(query, threadID, since, limit)
 	if DBErr != nil || resultRows == nil || resultRows.Err() != nil{
 		return nil, models.ThreadAbsentsError
@@ -185,7 +212,7 @@ func (t *ThreadRepository) IncrementThreadVotes(threadID uint64) error{
 	if t.DBConnection == nil{
 		return models.InternalDBError
 	}
-	query := "UPDATE thread SET votes_counter = votes_counter + 1 WHERE id = $1"
+	query := "UPDATE thread SET votes_counter = (select sum(rating) from vote where thread_id = $1) WHERE id = $1"
 	_, DBErr := t.DBConnection.Exec(query, threadID)
 	return DBErr
 }
@@ -198,7 +225,8 @@ func (t *ThreadRepository) SetThreadVote(threadID uint64, input models.ThreadVot
 	query := "INSERT INTO vote (thread_id, user_name, rating) VALUES ($1,$2,$3) on conflict(thread_id, user_name) do update set rating = $3 RETURNING ID"
 	var result uint64
 	ScanErr := t.DBConnection.QueryRow(query,threadID, input.Nickname, input.Voice).Scan(&result)
-	if ScanErr != nil{
+	log.Println(ScanErr)
+	if ScanErr == nil{
 		UpdatingErr := t.IncrementThreadVotes(threadID)
 		if UpdatingErr != nil{
 			return nil, models.InternalDBError

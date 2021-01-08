@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/Felix1Green/DB-project/internal/pkg/models"
 	//"github.com/lib/pq"
-	"log"
 )
 
 type UserRepository struct {

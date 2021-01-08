@@ -57,13 +57,9 @@ func (t *ThreadDelivery) GetThreadDetails(w http.ResponseWriter, r *http.Request
 	}
 	w.Header().Set("Content-Type", "application/json")
 
-	threadID, castErr := strconv.Atoi(mux.Vars(r)[thread.PathThreadName])
-	if castErr != nil{
-		w.WriteHeader(400)
-		return
-	}
+	threadSlug := mux.Vars(r)[thread.PathThreadName]
 
-	resp, err :=t.UseCase.GetThreadDetails(uint64(threadID))
+	resp, err :=t.UseCase.GetThreadDetails(threadSlug)
 	if err != nil{
 		w.WriteHeader(models.ErrorsStatusCodes[err])
 		outputBuf, _ := json.Marshal(models.ErrorMessage{Message: err.Error()})
@@ -113,15 +109,11 @@ func (t *ThreadDelivery) GetThreadPosts(w http.ResponseWriter, r *http.Request){
 	}
 	w.Header().Set("Content-Type", "application/json")
 
-	threadID, castErr := strconv.Atoi(mux.Vars(r)[thread.PathThreadName])
-	if castErr != nil{
-		w.WriteHeader(400)
-		return
-	}
+	threadSlug := mux.Vars(r)[thread.PathThreadName]
 
 	limit, since, desc := utils.GetLimitSinceDescQueryParams(r)
 	sort := r.URL.Query().Get(thread.QuerySortName)
-	resp, err := t.UseCase.GetThreadPosts(uint64(threadID), limit, int64(since), sort, desc)
+	resp, err := t.UseCase.GetThreadPosts(threadSlug, limit, int64(since), sort, desc)
 	if err != nil {
 		w.WriteHeader(models.ErrorsStatusCodes[err])
 		outputBuf, _ := json.Marshal(models.ErrorMessage{Message: err.Error()})
@@ -139,11 +131,7 @@ func (t *ThreadDelivery) SetThreadVote(w http.ResponseWriter, r *http.Request){
 	}
 	w.Header().Set("Content-Type", "application/json")
 
-	threadID, castErr := strconv.Atoi(mux.Vars(r)[thread.PathThreadName])
-	if castErr != nil {
-		w.WriteHeader(400)
-		return
-	}
+	threadSlug := mux.Vars(r)[thread.PathThreadName]
 
 	input := new(models.ThreadVoteInput)
 	defer r.Body.Close()
@@ -153,7 +141,7 @@ func (t *ThreadDelivery) SetThreadVote(w http.ResponseWriter, r *http.Request){
 		return
 	}
 
-	resp, err := t.UseCase.SetThreadVote(uint64(threadID), *input)
+	resp, err := t.UseCase.SetThreadVote(threadSlug, *input)
 	if err != nil{
 		w.WriteHeader(models.ErrorsStatusCodes[err])
 		outputBuf, _ := json.Marshal(models.ErrorMessage{Message: err.Error()})

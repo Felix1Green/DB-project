@@ -11,6 +11,7 @@ import (
 	"github.com/Felix1Green/DB-project/internal/app/thread"
 	"github.com/Felix1Green/DB-project/internal/app/users"
 	"github.com/Felix1Green/DB-project/internal/pkg/utils"
+	_ "github.com/lib/pq"
 	"log"
 	"net/http"
 	"strconv"
@@ -33,6 +34,7 @@ func CreateDBConnection(config *utils.ServiceConfig)(*sql.DB,error){
 
 	PostgreSQLConnection, DBErr := sql.Open("postgres", psqlInfo)
 	if DBErr != nil {
+		log.Println(DBErr)
 		return nil, errors.New("no postgresql connection")
 	}
 

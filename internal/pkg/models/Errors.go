@@ -12,9 +12,11 @@ var(
 	ParentPostDoesntExists = errors.New("parent post doesnt exists")
 	ForumAlreadyExists	   = errors.New("forum already exists")
 	ForumDoesntExists	   = errors.New("forum doesnt exists")
+	ThreadUniqueErr		   = errors.New("thread already exists")
 	PostDoesntExists 	   = errors.New("post doesnt exists")
 	IncorrectPath		   = errors.New("no such file or dir")
 	EmptyBody			   = errors.New("empty body")
+	ThreadDoesntExist	   = errors.New("thread doesnt exists")
 )
 
 
@@ -29,6 +31,7 @@ var(
 		UserAlreadyExists: 409,
 		UserConflict: 409,
 		EmptyBody: 201,
+		ThreadUniqueErr: 409,
 	}
 )
 

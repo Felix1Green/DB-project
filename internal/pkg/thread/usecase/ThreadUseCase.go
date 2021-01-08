@@ -4,6 +4,7 @@ import (
 	"github.com/Felix1Green/DB-project/internal/pkg/models"
 	"github.com/Felix1Green/DB-project/internal/pkg/thread"
 	"strconv"
+	"time"
 )
 
 type ThreadUseCase struct {
@@ -17,58 +18,91 @@ func NewThreadUseCase(repository thread.Repository) *ThreadUseCase{
 }
 
 func (t *ThreadUseCase) CreatePosts(slug string, body *[]models.PostCreateRequestInput) (*[]models.PostModel, error) {
+	result := make([]models.PostModel,0)
 	if len(*body) < 1{
-		result := make([]models.PostModel,0)
 		return &result, nil
-	}
-	parentsIDs := make([]uint64, 0)
-	parentsMap := make(map[uint64]bool, 0)
-	for _, val := range *body{
-		if _, ok := parentsMap[val.Parent]; !ok && val.Parent != 0{
-			parentsIDs = append(parentsIDs, val.Parent)
-			parentsMap[val.Parent] = true
-		}
-	}
-	if len(parentsIDs) > 0 {
-		avail, err := t.repository.CheckParentsExisting(parentsIDs)
-		if err != nil || !avail {
-			return nil, models.ParentPostDoesntExists
-		}
 	}
 
 	threadID, castErr := strconv.Atoi(slug)
+	th := new(models.ThreadModel)
 	if castErr != nil{
-		th,err := t.repository.GetThreadDetailsBySlug(slug)
+		thr, err := t.repository.GetThreadDetailsBySlug(slug)
 		if err != nil{
 			return nil, models.ThreadAbsentsError
 		}
-		return t.repository.CreatePosts(th.ID, th.Forum, body)
+		th = thr
+	}else{
+		thr, err := t.repository.GetThreadDetails(uint64(threadID))
+		if err != nil{
+			return nil, models.ThreadAbsentsError
+		}
+		th = thr
 	}
-	th, err := t.repository.GetThreadDetails(uint64(threadID))
-	if err != nil{
-		return nil, models.ThreadAbsentsError
+	timeString := time.Now()
+	for _, val := range *body{
+		if val.Parent != 0{
+			avail, err := t.repository.CheckParentsExisting(val.Parent)
+			if !avail || err != nil{
+				return nil, err
+			}
+		}
+		val.Created = timeString
+		post, err := t.repository.CreateSinglePost(th.ID, th.Forum, val)
+		if err != nil{
+			return nil, err
+		}
+		result = append(result, *post)
 	}
-	return t.repository.CreatePosts(th.ID, th.Forum, body)
+
+	return &result, nil
 }
 
-func (t *ThreadUseCase) GetThreadDetails(slug uint64) (*models.ThreadModel, error){
-	return t.repository.GetThreadDetails(slug)
+func (t *ThreadUseCase) GetThreadDetails(slug string) (*models.ThreadModel, error){
+	th, err := strconv.Atoi(slug)
+	threadID := uint64(th)
+	if err != nil{
+		threadObj, err := t.repository.GetThreadDetailsBySlug(slug)
+		if err != nil{
+			return nil, models.ThreadDoesntExist
+		}
+		threadID = threadObj.ID
+	}
+	return t.repository.GetThreadDetails(threadID)
 }
 
 func (t *ThreadUseCase) UpdateThreadDetails(slug uint64, input *models.ThreadUpdateInput) (*models.ThreadModel, error){
 	return t.repository.UpdateThreadDetails(slug, input)
 }
 
-func (t *ThreadUseCase) GetThreadPosts(threadID uint64, limit int, since int64, sort string, desc bool) (*[]models.PostModel, error){
+func (t *ThreadUseCase) GetThreadPosts(threadSlug string, limit int, since int64, sort string, desc bool) (*[]models.PostModel, error){
 	if limit < 1{
 		limit = 100
 	}
 	if sort == ""{
 		sort = "flat"
 	}
+
+	th, err := strconv.Atoi(threadSlug)
+	threadID := uint64(th)
+	if err != nil{
+		threadObj, err := t.repository.GetThreadDetailsBySlug(threadSlug)
+		if err != nil{
+			return nil, models.ThreadDoesntExist
+		}
+		threadID = threadObj.ID
+	}
 	return t.repository.GetThreadPosts(threadID, limit, since, sort, desc)
 }
 
-func (t *ThreadUseCase) SetThreadVote(threadID uint64, input models.ThreadVoteInput) (*models.ThreadModel, error){
+func (t *ThreadUseCase) SetThreadVote(threadSlug string, input models.ThreadVoteInput) (*models.ThreadModel, error){
+	th, castErr := strconv.Atoi(threadSlug)
+	threadID := uint64(th)
+	if castErr != nil{
+		threadObj, err := t.repository.GetThreadDetailsBySlug(threadSlug)
+		if err != nil{
+			return nil, models.ThreadDoesntExist
+		}
+		threadID = threadObj.ID
+	}
 	return t.repository.SetThreadVote(threadID, input)
 }
