@@ -22,11 +22,12 @@ func (t *ForumUseCase) CreateForum(input *models.ForumRequestInput) (*models.For
 	if input == nil || input.Slug == "" || input.Title == "" || input.User == "" {
 		return nil, models.IncorrectInputParams
 	}
-	_, err := t.userRepository.GetProfile(input.User)
+	user, err := t.userRepository.GetProfile(input.User)
 	if err != nil {
 		return nil, models.NoSuchUser
 	}
 
+	input.User = user.Nickname
 	return t.repository.CreateForum(input)
 }
 
@@ -54,10 +55,14 @@ func (t *ForumUseCase) GetForumUsers(slug string, limit, since int, desc bool) (
 	return t.repository.GetForumUsers(slug, limit, since, desc)
 }
 
-func (t *ForumUseCase) GetForumThreads(slug string, limit, since int, desc bool) (*[]models.ThreadModel, error) {
+func (t *ForumUseCase) GetForumThreads(slug string, limit int, since string, desc bool) (*[]models.ThreadModel, error) {
 	if slug == "" {
 		return nil, models.IncorrectInputParams
 	}
 
+	_, err := t.repository.GetForum(slug)
+	if err != nil{
+		return nil, models.ForumDoesntExists
+	}
 	return t.repository.GetForumThreads(slug, limit, since, desc)
 }

@@ -3,7 +3,6 @@ package repository
 import (
 	"database/sql"
 	"github.com/Felix1Green/DB-project/internal/pkg/models"
-	"log"
 )
 
 type CleanerRepository struct {
@@ -22,7 +21,6 @@ func (t *CleanerRepository) Status()(*models.Status, error){
 	ScanErr := t.DBConnection.QueryRow("SELECT (SELECT COUNT(id) FROM thread), (SELECT COUNT(id) FROM post), (SELECT COUNT(id) FROM forum), (SELECT COUNT(id) FROM users)").Scan(&result.Thread,
 		&result.Post, &result.Forum, &result.User)
 	if ScanErr != nil{
-		log.Println(ScanErr)
 		return nil, models.InternalDBError
 	}
 	return result, nil

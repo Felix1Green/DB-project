@@ -3,6 +3,7 @@ package usecase
 import (
 	"github.com/Felix1Green/DB-project/internal/pkg/models"
 	"github.com/Felix1Green/DB-project/internal/pkg/thread"
+	"strconv"
 )
 
 type ThreadUseCase struct {
@@ -15,25 +16,39 @@ func NewThreadUseCase(repository thread.Repository) *ThreadUseCase{
 	}
 }
 
-func (t *ThreadUseCase) CreatePosts(slug uint64, body *[]models.PostCreateRequestInput) (*[]models.PostModel, error) {
+func (t *ThreadUseCase) CreatePosts(slug string, body *[]models.PostCreateRequestInput) (*[]models.PostModel, error) {
+	if len(*body) < 1{
+		result := make([]models.PostModel,0)
+		return &result, nil
+	}
 	parentsIDs := make([]uint64, 0)
 	parentsMap := make(map[uint64]bool, 0)
 	for _, val := range *body{
-		if _, ok := parentsMap[val.Parent]; !ok{
+		if _, ok := parentsMap[val.Parent]; !ok && val.Parent != 0{
 			parentsIDs = append(parentsIDs, val.Parent)
 			parentsMap[val.Parent] = true
 		}
 	}
-	avail, err := t.repository.CheckParentsExisting(parentsIDs)
-	if err != nil || !avail{
-		return nil, models.ParentPostDoesntExists
+	if len(parentsIDs) > 0 {
+		avail, err := t.repository.CheckParentsExisting(parentsIDs)
+		if err != nil || !avail {
+			return nil, models.ParentPostDoesntExists
+		}
 	}
 
-	th, err := t.repository.GetThreadDetails(slug)
+	threadID, castErr := strconv.Atoi(slug)
+	if castErr != nil{
+		th,err := t.repository.GetThreadDetailsBySlug(slug)
+		if err != nil{
+			return nil, models.ThreadAbsentsError
+		}
+		return t.repository.CreatePosts(th.ID, th.Forum, body)
+	}
+	th, err := t.repository.GetThreadDetails(uint64(threadID))
 	if err != nil{
 		return nil, models.ThreadAbsentsError
 	}
-	return t.repository.CreatePosts(slug, th.Forum, body)
+	return t.repository.CreatePosts(th.ID, th.Forum, body)
 }
 
 func (t *ThreadUseCase) GetThreadDetails(slug uint64) (*models.ThreadModel, error){

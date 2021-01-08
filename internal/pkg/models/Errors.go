@@ -14,6 +14,7 @@ var(
 	ForumDoesntExists	   = errors.New("forum doesnt exists")
 	PostDoesntExists 	   = errors.New("post doesnt exists")
 	IncorrectPath		   = errors.New("no such file or dir")
+	EmptyBody			   = errors.New("empty body")
 )
 
 
@@ -27,6 +28,7 @@ var(
 		ForumDoesntExists: 404,
 		UserAlreadyExists: 409,
 		UserConflict: 409,
+		EmptyBody: 201,
 	}
 )
 

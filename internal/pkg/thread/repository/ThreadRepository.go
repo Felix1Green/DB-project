@@ -103,6 +103,25 @@ func (t *ThreadRepository) GetThreadDetails(slug uint64) (*models.ThreadModel, e
 	return resultItem, nil
 }
 
+func (t *ThreadRepository) GetThreadDetailsBySlug(slug string) (*models.ThreadModel, error){
+	if t.DBConnection == nil{
+		return nil, models.InternalDBError
+	}
+
+	query := "SELECT v1.ID, v1.title, v1.author, v1.forum, v1.message, v1.votes_counter, v1.created FROM thread v1 where slug = $1"
+	resultRow := t.DBConnection.QueryRow(query, slug)
+	if resultRow.Err() != nil{
+		return nil, models.ThreadAbsentsError
+	}
+	resultItem := new(models.ThreadModel)
+	ScanErr := resultRow.Scan(&resultItem.ID, &resultItem.Title, &resultItem.Author, &resultItem.Forum, &resultItem.Message,
+		&resultItem.Votes, &resultItem.Created)
+	if ScanErr != nil{
+		return nil, models.ThreadAbsentsError
+	}
+	return resultItem, nil
+}
+
 func (t *ThreadRepository) UpdateThreadDetails(slug uint64, input *models.ThreadUpdateInput) (*models.ThreadModel, error){
 	if t.DBConnection == nil{
 		return nil, models.InternalDBError
@@ -182,7 +201,6 @@ func (t *ThreadRepository) SetThreadVote(threadID uint64, input models.ThreadVot
 	if ScanErr != nil{
 		UpdatingErr := t.IncrementThreadVotes(threadID)
 		if UpdatingErr != nil{
-			log.Println(UpdatingErr)
 			return nil, models.InternalDBError
 		}
 	}

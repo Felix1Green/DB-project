@@ -25,6 +25,7 @@ func (t *UserDelivery) CreateUser(w http.ResponseWriter, r *http.Request){
 		return
 	}
 
+	w.Header().Set("Content-Type", "application/json")
 	vars := mux.Vars(r)
 	nickname := vars[users.NickNamePath]
 	CreateInput := new(models.UserRequestBody)
@@ -37,13 +38,16 @@ func (t *UserDelivery) CreateUser(w http.ResponseWriter, r *http.Request){
 	response, err := t.UseCase.CreateUser(nickname, CreateInput)
 	if response != nil && err != nil{
 		w.WriteHeader(409)
+		outputBuf, _ := json.Marshal(response)
+		_, _ = w.Write(outputBuf)
+		return
 	}
 	if err != nil{
 		utils.ServerErrorResponse(err, models.ErrorsStatusCodes[err], w)
 		return
 	}
-
-	outputBuf, _ := json.Marshal(response)
+	w.WriteHeader(201)
+	outputBuf, _ := json.Marshal((*response)[0])
 	_, _ = w.Write(outputBuf)
 	return
 }
@@ -53,11 +57,13 @@ func (t *UserDelivery) GetUser(w http.ResponseWriter, r *http.Request){
 		w.WriteHeader(405)
 		return
 	}
+	w.Header().Set("Content-Type", "application/json")
 
 	vars := mux.Vars(r)
 	nickname := vars[users.NickNamePath]
 	response, err := t.UseCase.GetProfile(nickname)
 	if err != nil{
+		w.WriteHeader(models.ErrorsStatusCodes[err])
 		utils.ServerErrorResponse(err, models.ErrorsStatusCodes[err], w)
 		return
 	}
@@ -72,6 +78,7 @@ func (t *UserDelivery) UpdateUser(w http.ResponseWriter, r *http.Request){
 		w.WriteHeader(405)
 		return
 	}
+	w.Header().Set("Content-Type", "application/json")
 
 	vars := mux.Vars(r)
 	nickname := vars[users.NickNamePath]
@@ -84,6 +91,7 @@ func (t *UserDelivery) UpdateUser(w http.ResponseWriter, r *http.Request){
 
 	response, err := t.UseCase.UpdateProfile(nickname, CreateInput)
 	if err != nil{
+		w.WriteHeader(models.ErrorsStatusCodes[err])
 		utils.ServerErrorResponse(err, models.ErrorsStatusCodes[err], w)
 		return
 	}

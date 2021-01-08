@@ -1,28 +1,30 @@
 package models
 
 type ThreadRequestInput struct {
-	Title string
-	Author string
-	Message string
-	Created string
+	Title string `json:"title"`
+	Author string `json:"author"`
+	Message string `json:"message"`
+	Created string `json:"created"`
+	Slug string `json:"slug"`
 }
 
 type ThreadModel struct {
-	ID uint64
-	Title string
-	Author string
-	Message string
-	Created string
-	Votes uint64
-	Forum string
+	ID uint64 `json:"id"`
+	Title string `json:"title"`
+	Author string `json:"author"`
+	Message string `json:"message"`
+	Created string `json:"created"`
+	Votes uint64 `json:"votes"`
+	Forum string `json:"forum"`
+	Slug string `json:"slug"`
 }
 
 type ThreadUpdateInput struct {
-	Title string
-	Message string
+	Title string `json:"title"`
+	Message string `json:"message"`
 }
 
 type ThreadVoteInput struct {
-	Nickname string
-	Voice int
+	Nickname string `json:"nickname"`
+	Voice int `json:"voice"`
 }

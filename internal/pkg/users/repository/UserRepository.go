@@ -2,7 +2,10 @@ package repository
 
 import (
 	"database/sql"
+	"fmt"
 	"github.com/Felix1Green/DB-project/internal/pkg/models"
+	//"github.com/lib/pq"
+	"log"
 )
 
 type UserRepository struct {
@@ -43,36 +46,57 @@ func (t *UserRepository) CreateUser(nickname string, user *models.UserRequestBod
 }
 
 func (t *UserRepository) GetProfile(nickname string) (*models.User, error) {
-	query := "SELECT fullname, about, email FROM users where nickname = $1"
+	query := "SELECT nickname, fullname, about, email FROM users where nickname = $1"
 	result := t.dbConnection.QueryRow(query, nickname)
 	if result.Err() != nil {
 		return nil, models.NoSuchUser
 	}
 	UserInstance := new(models.User)
-	scanErr := result.Scan(&UserInstance.FullName, &UserInstance.About, &UserInstance.Email)
+	scanErr := result.Scan(&UserInstance.Nickname,&UserInstance.FullName, &UserInstance.About, &UserInstance.Email)
 	if scanErr != nil {
 		return nil, models.NoSuchUser
 	}
-	UserInstance.Nickname = nickname
 	return UserInstance, nil
 }
 
 func (t *UserRepository) UpdateProfile(nickname string, user *models.UserRequestBody) (*models.User, error) {
-	query := "UPDATE users SET fullname=$1, about=$2, email=$3 where nickname=$4 returning nickname"
-	result := t.dbConnection.QueryRow(query, user.FullName, user.About, user.Email, nickname)
+	queryArgs :=make([]interface{},0)
+	query := "UPDATE users SET "
+	counter := 1
+	if user.FullName != ""{
+		query += fmt.Sprintf("fullname=$%d ", counter)
+		queryArgs = append(queryArgs, user.FullName)
+		counter++
+	}
+	if user.About != ""{
+		if counter > 1{
+			query += fmt.Sprintf(", about=$%d ", counter)
+		}else{
+			query += fmt.Sprintf("about=$%d ", counter)
+		}
+		queryArgs = append(queryArgs, user.About)
+		counter++
+	}
+	if user.Email != ""{
+		if counter > 1{
+			query += fmt.Sprintf(", email=$%d ", counter)
+		}else{
+			query += fmt.Sprintf("email=$%d ", counter)
+		}
+		queryArgs = append(queryArgs, user.Email)
+		counter++
+	}
+	query += fmt.Sprintf("where nickname=$%d returning nickname, fullname, about, email", counter)
+	queryArgs = append(queryArgs, nickname)
+	result := t.dbConnection.QueryRow(query, queryArgs...)
 	if result.Err() != nil {
 		return nil, models.UserConflict
 	}
-	nickname = ""
-	scanErr := result.Scan(&nickname)
+	item := new(models.User)
+	scanErr := result.Scan(&item.Nickname, &item.FullName, &item.About, &item.Email)
 	if scanErr != nil || nickname == "" {
 		return nil, models.NoSuchUser
 	}
 
-	return &models.User{
-		Nickname: nickname,
-		FullName: user.FullName,
-		About:    user.About,
-		Email:    user.Email,
-	}, nil
+	return item, nil
 }

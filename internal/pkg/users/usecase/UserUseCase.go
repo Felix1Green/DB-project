@@ -31,8 +31,8 @@ func (t *UserUseCase) GetProfile(nickname string) (*models.User, error){
 }
 
 func (t *UserUseCase) UpdateProfile(nickname string, user *models.UserRequestBody) (*models.User, error){
-	if nickname == "" || user.Email == ""{
-		return nil, models.IncorrectInputParams
+	if nickname == "" || user.Email == "" && user.About == "" && user.FullName == ""{
+		return t.Repository.GetProfile(nickname)
 	}
 	return t.Repository.UpdateProfile(nickname, user)
 }

@@ -26,12 +26,8 @@ func (t *ThreadDelivery) CreateNewPosts(w http.ResponseWriter, r *http.Request){
 		return
 	}
 
+	w.Header().Set("Content-Type", "application/json")
 	slug := mux.Vars(r)[thread.PathThreadName]
-	threadID, castErr := strconv.Atoi(slug)
-	if castErr != nil{
-		w.WriteHeader(400)
-		return
-	}
 
 	defer r.Body.Close()
 	input := make([]models.PostCreateRequestInput, 0)
@@ -41,13 +37,15 @@ func (t *ThreadDelivery) CreateNewPosts(w http.ResponseWriter, r *http.Request){
 		return
 	}
 
-	resp, err := t.UseCase.CreatePosts(uint64(threadID), &input)
+	resp, err := t.UseCase.CreatePosts(slug, &input)
 	if err != nil{
 		w.WriteHeader(models.ErrorsStatusCodes[err])
 		outputBuf, _ := json.Marshal(models.ErrorMessage{Message: err.Error()})
 		_, _ = w.Write(outputBuf)
 		return
 	}
+
+	w.WriteHeader(201)
 	outputBuf, _ := json.Marshal(resp)
 	_, _ = w.Write(outputBuf)
 }
@@ -57,6 +55,7 @@ func (t *ThreadDelivery) GetThreadDetails(w http.ResponseWriter, r *http.Request
 		w.WriteHeader(405)
 		return
 	}
+	w.Header().Set("Content-Type", "application/json")
 
 	threadID, castErr := strconv.Atoi(mux.Vars(r)[thread.PathThreadName])
 	if castErr != nil{
@@ -81,6 +80,7 @@ func (t *ThreadDelivery) UpdateThreadInfo(w http.ResponseWriter, r *http.Request
 		w.WriteHeader(405)
 		return
 	}
+	w.Header().Set("Content-Type", "application/json")
 
 	threadID, castErr := strconv.Atoi(mux.Vars(r)[thread.PathThreadName])
 	if castErr != nil{
@@ -111,6 +111,7 @@ func (t *ThreadDelivery) GetThreadPosts(w http.ResponseWriter, r *http.Request){
 		w.WriteHeader(405)
 		return
 	}
+	w.Header().Set("Content-Type", "application/json")
 
 	threadID, castErr := strconv.Atoi(mux.Vars(r)[thread.PathThreadName])
 	if castErr != nil{
@@ -136,6 +137,7 @@ func (t *ThreadDelivery) SetThreadVote(w http.ResponseWriter, r *http.Request){
 		w.WriteHeader(405)
 		return
 	}
+	w.Header().Set("Content-Type", "application/json")
 
 	threadID, castErr := strconv.Atoi(mux.Vars(r)[thread.PathThreadName])
 	if castErr != nil {

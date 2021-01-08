@@ -18,3 +18,5 @@ services:
     - ./init/database.env
     volumes:
     - ./:/app
+    depends_on:
+      - postgresql

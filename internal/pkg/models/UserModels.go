@@ -2,15 +2,15 @@ package models
 
 
 type UserRequestBody struct{
-	FullName string
-	About string
-	Email string
+	FullName string `json:"fullname"`
+	About string `json:"about"`
+	Email string `json:"email"`
 }
 
 
 type User struct{
-	Nickname string
-	FullName string
-	About string
-	Email string
+	Nickname string `json:"nickname"`
+	FullName string `json:"fullname"`
+	About string `json:"about"`
+	Email string `json:"email"`
 }

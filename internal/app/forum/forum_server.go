@@ -22,11 +22,11 @@ type Service struct {
 func configureRouter(handler *delivery.ForumDelivery) *mux.Router{
 	router := mux.NewRouter()
 
-	router.HandleFunc("/api/forum/create/", handler.CreateForum)
-	router.HandleFunc(fmt.Sprintf("/api/forum/{%s:.+}/details/", forum.SlugPathName), handler.GetForum)
-	router.HandleFunc(fmt.Sprintf("/api/forum/{%s:.+}/create/", forum.SlugPathName), handler.CreateForumThread)
-	router.HandleFunc(fmt.Sprintf("/api/forum/{%s:.+}/users/", forum.SlugPathName), handler.GetForumUsers)
-	router.HandleFunc(fmt.Sprintf("/api/forum/{%s:.+}/threads/", forum.SlugPathName), handler.GetForumThreads)
+	router.HandleFunc("/api/forum/create", handler.CreateForum)
+	router.HandleFunc(fmt.Sprintf("/api/forum/{%s:.+}/details", forum.SlugPathName), handler.GetForum)
+	router.HandleFunc(fmt.Sprintf("/api/forum/{%s:.+}/create", forum.SlugPathName), handler.CreateForumThread)
+	router.HandleFunc(fmt.Sprintf("/api/forum/{%s:.+}/users", forum.SlugPathName), handler.GetForumUsers)
+	router.HandleFunc(fmt.Sprintf("/api/forum/{%s:.+}/threads", forum.SlugPathName), handler.GetForumThreads)
 
 	return router
 }

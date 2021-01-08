@@ -36,3 +36,21 @@ func GetLimitSinceDescQueryParams(r *http.Request) (int, int, bool) {
 	}
 	return parsedLimit, parsedSince, false
 }
+
+func LimitIntSinceStringParams(r *http.Request)(int, string, bool){
+	limit := r.URL.Query().Get(forum.LimitQueryName)
+	since := r.URL.Query().Get(forum.SinceQueryName)
+	desc := r.URL.Query().Get(forum.DescQueryName)
+	parsedLimit, ok := strconv.Atoi(limit)
+	if ok != nil {
+		parsedLimit = 100
+	}
+
+	if desc != "" {
+		if desc == "true"{
+			return parsedLimit, since, true
+		}
+		return parsedLimit, since, false
+	}
+	return parsedLimit, since, false
+}

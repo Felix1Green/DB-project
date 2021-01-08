@@ -16,8 +16,8 @@ type Service struct {
 func configureRouter(handler *delivery.CleanerDelivery)*mux.Router{
 	router := mux.NewRouter()
 
-	router.HandleFunc("/api/service/clear/", handler.ClearDB)
-	router.HandleFunc("/api/service/status/", handler.GetStatus)
+	router.HandleFunc("/api/service/clear", handler.ClearDB)
+	router.HandleFunc("/api/service/status", handler.GetStatus)
 	return router
 }
 

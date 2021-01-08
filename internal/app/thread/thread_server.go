@@ -22,11 +22,11 @@ type Service struct {
 func configureRouter(handler *Delivery.ThreadDelivery) *mux.Router{
 	router := mux.NewRouter()
 
-	router.HandleFunc(fmt.Sprintf("/api/thread/{%s:[0-9]+}/create/", thread.PathThreadName), handler.CreateNewPosts)
-	router.HandleFunc(fmt.Sprintf("/api/thread/{%s:[0-9]+}/details/", thread.PathThreadName), handler.GetThreadDetails).Methods(http.MethodGet)
-	router.HandleFunc(fmt.Sprintf("/api/thread/{%s:[0-9]+}/details/", thread.PathThreadName), handler.UpdateThreadInfo).Methods(http.MethodPost)
-	router.HandleFunc(fmt.Sprintf("/api/thread/{%s:[0-9]+}/posts/", thread.PathThreadName), handler.GetThreadPosts)
-	router.HandleFunc(fmt.Sprintf("/api/thread/{%s:[0-9]+}/vote/", thread.PathThreadName), handler.SetThreadVote)
+	router.HandleFunc(fmt.Sprintf("/api/thread/{%s:.+}/create", thread.PathThreadName), handler.CreateNewPosts)
+	router.HandleFunc(fmt.Sprintf("/api/thread/{%s:.+}/details", thread.PathThreadName), handler.GetThreadDetails).Methods(http.MethodGet)
+	router.HandleFunc(fmt.Sprintf("/api/thread/{%s:.+}/details", thread.PathThreadName), handler.UpdateThreadInfo).Methods(http.MethodPost)
+	router.HandleFunc(fmt.Sprintf("/api/thread/{%s:.+}/posts", thread.PathThreadName), handler.GetThreadPosts)
+	router.HandleFunc(fmt.Sprintf("/api/thread/{%s:.+}/vote", thread.PathThreadName), handler.SetThreadVote)
 
 	return router
 }

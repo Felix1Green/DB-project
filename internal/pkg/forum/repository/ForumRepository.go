@@ -18,15 +18,16 @@ func NewForumRepository(connection *sql.DB) *ForumRepository{
 
 
 func (t *ForumRepository) CreateForum(input *models.ForumRequestInput) (*models.Forum, error) {
-	query := "INSERT INTO forum (title, user_id, slug) VALUES ($1, $2, $3)"
-	uniqueErrQuery := "SELECT v1.title, v1.user, v1.slug, COUNT(v2.id), COUNT(v3.id) FROM ( " +
-		"SELECT v1.title, v1.user, v1.slug, COUNT(v2.id) FROM forum " +
-		"join thread v2 on (v2.forum=v1.slug) " +
-		"where v1.slug = $1 group by v1.title, v1.user, v1.slug ) " +
-		"join post v3 on (v3.forum = v1.slug) " +
-		"group by v1.title, v1.user, v1.slug"
-	_, DBErr := t.dbConnection.Exec(query, input.Title, input.User, input.Slug)
-	if DBErr != nil {
+	query := "INSERT INTO forum (title, user_id, slug) VALUES ($1, $2, $3) returning title, user_id, slug"
+	uniqueErrQuery := "SELECT v1.title, v1.user_id, v1.slug, v1.cnt, COUNT(v3.id) FROM ( " +
+		"SELECT v1.title, v1.user_id, v1.slug, COUNT(v2.id) as cnt FROM forum v1 " +
+		"left join thread v2 on (v2.forum=v1.slug) " +
+		"where v1.slug = $1 group by v1.title, v1.user_id, v1.slug ) v1 " +
+		"left join post v3 on (v3.forum = v1.slug) " +
+		"group by v1.title, v1.user_id, v1.slug, v1.cnt"
+	item := new(models.Forum)
+	scanErr := t.dbConnection.QueryRow(query, input.Title, input.User, input.Slug).Scan(&item.Title, &item.User, &item.Slug)
+	if scanErr != nil {
 		forumInstance := new(models.Forum)
 		scanErr := t.dbConnection.QueryRow(uniqueErrQuery, input.Slug).Scan(&forumInstance.Title, &forumInstance.User,
 			&forumInstance.Slug, &forumInstance.Threads, &forumInstance.Posts)
@@ -35,39 +36,43 @@ func (t *ForumRepository) CreateForum(input *models.ForumRequestInput) (*models.
 		}
 		return forumInstance, models.ForumAlreadyExists
 	}
-	return &models.Forum{
-		Title: input.Title,
-		User:  input.User,
-		Slug:  input.Slug,
-	}, nil
+	return item, nil
 }
 
 func (t *ForumRepository) GetForum(slug string) (*models.Forum, error) {
-	query := "SELECT v1.title, v1.user, v1.slug, COUNT(v2.id), COUNT(v3.id) FROM (" +
-		"SELECT v1.title, v1.user, v1.slug, COUNT(v2.id) FROM forum " +
-		"join thread v2 on (v2.forum=v1.slug) " +
-		"where v1.slug = $1 group by v1.title, v1.user, v1.slug ) " +
-		"join post v3 on (v3.forum = v1.slug) " +
-		"group by v1.title, v1.user, v1.slug "
+	query := "SELECT v1.title, v1.user_id, v1.slug, v1.cnt, COUNT(v3.id) FROM (" +
+		"SELECT v1.title, v1.user_id, v1.slug, COUNT(v2.id) as cnt FROM forum v1 " +
+		"left join thread v2 on (v2.forum=v1.slug) " +
+		"where v1.slug = $1 group by v1.title, v1.user_id, v1.slug ) v1 " +
+		"left join post v3 on (v3.forum = v1.slug) " +
+		"group by v1.title, v1.user_id, v1.slug, v1.cnt "
 	res := new(models.Forum)
 	ScanErr := t.dbConnection.QueryRow(query, slug).Scan(&res.Title, &res.User, &res.Slug, &res.Threads, &res.Posts)
 	if ScanErr != nil{
-		log.Println(ScanErr)
 		return nil, models.ForumDoesntExists
 	}
 
+	log.Printf("%v \n", res)
 	return res,nil
 }
 
 
 func (t *ForumRepository) CreateForumThread(slug string, thread *models.ThreadRequestInput) (*models.ThreadModel, error){
-	query := "INSERT INTO Thread (title,author,message,forum) VALUES ($1,$2,$3,$4) RETURNING ID, CREATED"
+	query := "INSERT INTO Thread (title,author,message,forum, slug) VALUES ($1,$2,$3,$4,$5) RETURNING ID, CREATED"
+	queryArgs := []interface{}{
+		thread.Title, thread.Author, thread.Message, slug,thread.Slug,
+	}
+	if thread.Created != ""{
+		query = "INSERT INTO Thread (title, author, message, forum,slug, created) VALUES ($1,$2,$3,$4,$5,$6) RETURNING ID, CREATED"
+		queryArgs = append(queryArgs, thread.Created)
+	}
 	uniqueErrQuery := "SELECT v1.id, v1.title, v1.author, v1.forum, v1.message, COUNT(v2.id), v1.created " +
 		"FROM Thread v1 JOIN post v2 on(v2.thread = v1.id) WHERE v1.title = $1"
-	result := t.dbConnection.QueryRow(query, thread.Title, thread.Author, thread.Message, slug)
+
+	result := t.dbConnection.QueryRow(query, queryArgs...)
 	var resultID uint64
 	var created string
-	if result.Err() != nil || result.Scan(&resultID, created) != nil{
+	if result.Err() != nil || result.Scan(&resultID, &created) != nil{
 		resultThread := new(models.ThreadModel)
 		scanErr := t.dbConnection.QueryRow(uniqueErrQuery, thread.Title).Scan(&resultThread.ID, &resultThread.Title,
 			&resultThread.Author, &resultThread.Forum,&resultThread.Message, &resultThread.Votes, &resultThread.Created)
@@ -82,6 +87,7 @@ func (t *ForumRepository) CreateForumThread(slug string, thread *models.ThreadRe
 		Author: thread.Author,
 		Message: thread.Message,
 		Created: created,
+		Slug: thread.Slug,
 		Votes: 0,
 		Forum: slug,
 	}, nil
@@ -116,23 +122,43 @@ func (t *ForumRepository) GetForumUsers(slug string, limit, since int, desc bool
 	return &resultList, nil
 }
 
-func (t *ForumRepository) GetForumThreads(slug string, limit, since int, desc bool) (*[]models.ThreadModel, error){
-	query := "SELECT id, title, author, forum, message, COUNT(v2.id), created FROM thread " +
-		"join post v2 on (v2.thread = id) " +
-		"where forum = $1 and created >= $2 " +
-		"ORDER BY created "
+func (t *ForumRepository) GetForumThreads(slug string, limit int, since string, desc bool) (*[]models.ThreadModel, error){
+	queryArgs := []interface{}{
+		slug, limit,
+	}
+	query := "SELECT v1.id, v1.title, v1.author, v1.forum, v1.message, COUNT(v2.id), v1.created, v1.slug FROM thread v1 " +
+		"left join post v2 on (v2.thread = v1.id) " +
+		"where v1.forum = $1 " +
+		"GROUP BY v1.id, v1.created ORDER BY v1.created "
+	if since != ""{
+		if desc{
+			query = "SELECT v1.id, v1.title, v1.author, v1.forum, v1.message, COUNT(v2.id), v1.created, v1.slug FROM thread v1 " +
+				"left join post v2 on (v2.thread = v1.id) " +
+				"where v1.forum = $1 and v1.created <= $3 " +
+				"GROUP BY v1.id, v1.created ORDER BY v1.created "
+		}else{
+			query = "SELECT v1.id, v1.title, v1.author, v1.forum, v1.message, COUNT(v2.id), v1.created, v1.slug FROM thread v1 " +
+				"left join post v2 on (v2.thread = v1.id) " +
+				"where v1.forum = $1 and v1.created >= $3 " +
+				"GROUP BY v1.id, v1.created ORDER BY v1.created "
+		}
+		queryArgs = append(queryArgs, since)
+	}
 	if desc{
 		query += "DESC "
 	}
-	query += "LIMIT $3"
-	rows, DBErr := t.dbConnection.Query(query, slug, since, limit)
+	query += "LIMIT $2 "
+	rows, DBErr := t.dbConnection.Query(query, queryArgs...)
 	if DBErr != nil || rows.Err() != nil{
 		return nil, models.ForumDoesntExists
 	}
 	resultList := make([]models.ThreadModel, 0)
+	defer func() {
+		_ = rows.Close()
+	}()
 	for rows.Next(){
 		model := new(models.ThreadModel)
-		ScanErr := rows.Scan(&model.ID, &model.Title, &model.Author,&model.Forum,&model.Message,&model.Votes, &model.Created)
+		ScanErr := rows.Scan(&model.ID, &model.Title, &model.Author,&model.Forum,&model.Message,&model.Votes, &model.Created, &model.Slug)
 		if ScanErr != nil{
 			return nil, models.ForumDoesntExists
 		}

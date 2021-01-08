@@ -22,8 +22,8 @@ type Service struct {
 func configureRouter(handler *delivery.PostDelivery) *mux.Router{
 	router := mux.NewRouter()
 
-	router.HandleFunc(fmt.Sprintf("/api/post/{%s:[0-9]+}/details/", post.PathPostName), handler.GetPostDetails).Methods(http.MethodGet)
-	router.HandleFunc(fmt.Sprintf("/api/post/{%s:[0-9]+}/details/",post.PathPostName), handler.UpdatePostMessage).Methods(http.MethodPost)
+	router.HandleFunc(fmt.Sprintf("/api/post/{%s:[0-9]+}/details", post.PathPostName), handler.GetPostDetails).Methods(http.MethodGet)
+	router.HandleFunc(fmt.Sprintf("/api/post/{%s:[0-9]+}/details",post.PathPostName), handler.UpdatePostMessage).Methods(http.MethodPost)
 
 	return router
 }
