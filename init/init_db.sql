@@ -31,15 +31,17 @@ create table thread
 
 create table post
 (
-    id serial not null primary key ,
+    id serial primary key ,
     parent int not null ,
     author citext references users(nickname),
     message text,
     isEdited boolean default false,
     forum citext references forum(slug),
     thread int references thread(id),
-    created timestamp with time zone default now()
+    created timestamp with time zone default now(),
+    path integer [] default '{0}':: INTEGER []
 );
+select nextval('post_id_seq')::integer;
 
 create table vote
 (

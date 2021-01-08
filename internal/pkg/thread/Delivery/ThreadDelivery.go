@@ -7,7 +7,6 @@ import (
 	"github.com/Felix1Green/DB-project/internal/pkg/utils"
 	"github.com/gorilla/mux"
 	"net/http"
-	"strconv"
 )
 
 type ThreadDelivery struct {
@@ -78,12 +77,7 @@ func (t *ThreadDelivery) UpdateThreadInfo(w http.ResponseWriter, r *http.Request
 	}
 	w.Header().Set("Content-Type", "application/json")
 
-	threadID, castErr := strconv.Atoi(mux.Vars(r)[thread.PathThreadName])
-	if castErr != nil{
-		w.WriteHeader(400)
-		return
-	}
-
+	threadSlug := mux.Vars(r)[thread.PathThreadName]
 	input := new(models.ThreadUpdateInput)
 	decodeErr := json.NewDecoder(r.Body).Decode(&input)
 	if decodeErr != nil{
@@ -91,7 +85,7 @@ func (t *ThreadDelivery) UpdateThreadInfo(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	resp, err := t.UseCase.UpdateThreadDetails(uint64(threadID), input)
+	resp, err := t.UseCase.UpdateThreadDetails(threadSlug, input)
 	if err != nil{
 		w.WriteHeader(models.ErrorsStatusCodes[err])
 		outputBuf, _ := json.Marshal(models.ErrorMessage{Message: err.Error()})

@@ -69,10 +69,16 @@ func (t *ThreadRepository) CreateSinglePost(slug uint64, forumName string, body 
 		return nil, models.InternalDBError
 	}
 
-	insertQuery := "INSERT INTO post (parent,author,message,thread,forum, created) VALUES ($1,$2,$3,$4,$5,$6) RETURNING id, created";
+	log.Println("ARGS", slug, forumName, body.Parent, body.Author)
+	insertQuery := ""
+	if body.Parent == 0{
+		insertQuery = "INSERT INTO post (parent,author,message,thread,forum, created, path) VALUES ($1,$2,$3,$4,$5,$6, array(select currval('post_id_seq')::integer)) RETURNING id, created";
+	}else{
+		insertQuery = "INSERT INTO post (parent,author,message,thread,forum, created, path) VALUES ($1,$2,$3,$4,$5,$6, (SELECT path from post where id = $1) || (select currval('post_id_seq')::integer)) RETURNING id, created";
+	}
 	rows := t.DBConnection.QueryRow(insertQuery, body.Parent, body.Author, body.Message, slug, forumName, body.Created)
 	if rows == nil || rows.Err() != nil{
-		log.Println("CREATE POSTS")
+		log.Println("CREATE POSTS", rows.Err())
 		return nil, models.ParentPostDoesntExists
 	}
 	result := new(models.PostModel)
@@ -153,10 +159,10 @@ func (t *ThreadRepository) UpdateThreadDetails(slug uint64, input *models.Thread
 		return nil, models.InternalDBError
 	}
 
-	query := "UPDATE thread SET title = $1, message = $2 WHERE ID = $3 RETURNING author, forum, votes_counter, created"
+	query := "UPDATE thread SET title = $1, message = $2 WHERE ID = $3 RETURNING author, forum, votes_counter, created, slug"
 	resultItem := new(models.ThreadModel)
 	ScanErr := t.DBConnection.QueryRow(query, input.Title, input.Message, slug).Scan(&resultItem.Author,
-		&resultItem.Forum, &resultItem.Votes, &resultItem.Created)
+		&resultItem.Forum, &resultItem.Votes, &resultItem.Created, &resultItem.Slug)
 	if ScanErr != nil{
 		return nil, models.ThreadAbsentsError
 	}
@@ -166,29 +172,13 @@ func (t *ThreadRepository) UpdateThreadDetails(slug uint64, input *models.Thread
 	return resultItem, nil
 }
 
+
 func (t *ThreadRepository) GetThreadPosts(threadID uint64, limit int, since int64, sort string, desc bool)(*[]models.PostModel, error){
 	if t.DBConnection == nil{
 		return nil, models.InternalDBError
 	}
 
-	var query = "SELECT v1.id, v1.parent, v1.author, v1.message, v1.isEdited, v1.forum, v1.thread, v1.created from post v1 " +
-		"WHERE v1.thread = $1 AND v1.id > $2 "
-	if sort == "tree"{
-		query += "ORDER BY CASE WHEN v1.parent = 0 THEN v1.id ELSE v1.parent END, " +
-			"CASE WHEN v1.parent = 0 THEN 0 ELSE v1.id END "
-	}else if sort == "parent_tree"{
-		query += "AND v1.parent < $3 ORDER BY CASE WHEN v1.parent = 0 THEN v1.id ELSE v1.parent END, " +
-			"CASE WHEN v1.parent = 0 THEN 0 ELSE v1.id END "
-	}else{
-		query += "ORDER BY v1.created,v1.id "
-	}
-	if desc {
-		query += "DESC "
-	}
-	if sort != "parent_tree"{
-		query += "LIMIT $3 "
-	}
-
+	query := BuildGetThreadsQuery(sort, limit, since, desc)
 	log.Println("QUERY ", query, sort, limit, desc, threadID, since)
 	resultRows, DBErr := t.DBConnection.Query(query, threadID, since, limit)
 	if DBErr != nil || resultRows == nil || resultRows.Err() != nil{
@@ -235,4 +225,58 @@ func (t *ThreadRepository) SetThreadVote(threadID uint64, input models.ThreadVot
 	return t.GetThreadDetails(threadID)
 }
 
+
+func BuildGetThreadsQuery(sort string, limit int, since int64, desc bool) string{
+	var query = "SELECT v1.id, v1.parent, v1.author, v1.message, v1.isEdited, v1.forum, v1.thread, v1.created from post v1 WHERE v1.thread = $1 "
+	switch sort{
+	case "tree":
+		if since > 0{
+			if !desc {
+				query += "AND v1.path > (select p.path from post p where p.id = $2) ORDER BY v1.path "
+			}else{
+				query += "AND v1.path < (select p.path from post p where p.id = $2) ORDER BY v1.path DESC "
+			}
+		}else{
+			query += "AND v1.path[1] > $2 ORDER BY v1.path "
+			if desc{
+				query += "DESC "
+			}
+		}
+		query += "LIMIT $3 "
+		break
+	case "parent_tree":
+		if since > 0{
+			if desc{
+				query += "and v1.path[1] IN(SELECT p.path[1] from post p where p.thread = $1 and p.parent = 0 AND p.path[1] < (select p2.path[1] from post p2 where p2.id = $2)  order by p.path[1] DESC limit $3) ORDER BY v1.path[1] DESC, v1.path "
+			}else{
+				query += "and v1.path[1] IN(SELECT p.path[1] from post p where p.thread = $1 and p.parent = 0 AND p.path[1] > (select p2.path[1] from post p2 where p2.id = $2)  order by p.path[1] limit $3) ORDER BY v1.path[1] "
+			}
+
+		}else{
+			if desc{
+				query += "AND v1.path[1] > $2 and v1.path[1] IN(SELECT p.path[1] from post p where p.thread = $1 and p.id > $2 and p.parent = 0 order by p.path[1] DESC limit $3) ORDER BY v1.path[1] DESC, v1.path"
+			}else{
+				query += "AND v1.path[1] > $2 and v1.path[1] IN(SELECT p.path[1] from post p where p.thread = $1 and p.id > $2 and p.parent = 0 order by p.path[1] limit $3) ORDER BY v1.path  "
+			}
+		}
+		break
+	default:
+		if since > 0{
+			if desc{
+				query += "AND v1.id < $2 ORDER BY v1.created DESC,v1.id DESC "
+			}else{
+				query += "AND v1.id > $2 ORDER BY v1.created,v1.id "
+			}
+		}else{
+			if desc{
+				query += "AND v1.id > $2 ORDER BY v1.created DESC,v1.id DESC "
+			}else{
+				query += "AND v1.id > $2 ORDER BY v1.created,v1.id "
+			}
+		}
+		query += "LIMIT $3 "
+		break
+	}
+	return query
+}
 

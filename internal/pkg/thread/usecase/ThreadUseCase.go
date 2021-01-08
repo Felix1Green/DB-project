@@ -70,8 +70,17 @@ func (t *ThreadUseCase) GetThreadDetails(slug string) (*models.ThreadModel, erro
 	return t.repository.GetThreadDetails(threadID)
 }
 
-func (t *ThreadUseCase) UpdateThreadDetails(slug uint64, input *models.ThreadUpdateInput) (*models.ThreadModel, error){
-	return t.repository.UpdateThreadDetails(slug, input)
+func (t *ThreadUseCase) UpdateThreadDetails(slug string, input *models.ThreadUpdateInput) (*models.ThreadModel, error){
+	thr, castErr := strconv.Atoi(slug)
+	threadID := uint64(thr)
+	if castErr != nil{
+		th, err := t.repository.GetThreadDetailsBySlug(slug)
+		if err != nil{
+			return nil, models.ThreadDoesntExist
+		}
+		threadID = th.ID
+	}
+	return t.repository.UpdateThreadDetails(threadID, input)
 }
 
 func (t *ThreadUseCase) GetThreadPosts(threadSlug string, limit int, since int64, sort string, desc bool) (*[]models.PostModel, error){

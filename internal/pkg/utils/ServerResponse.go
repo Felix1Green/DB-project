@@ -32,7 +32,10 @@ func GetLimitSinceDescQueryParams(r *http.Request) (int, int, bool) {
 		parsedSince = -1
 	}
 	if desc != "" {
-		return parsedLimit, parsedSince, true
+		if desc == "true"{
+			return parsedLimit, parsedSince, true
+		}
+		return parsedLimit, parsedSince, false
 	}
 	return parsedLimit, parsedSince, false
 }

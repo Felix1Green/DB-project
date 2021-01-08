@@ -26,6 +26,7 @@ var(
 		IncorrectInputParams: 400,
 		NoSuchUser: 404,
 		ThreadAbsentsError: 404,
+		ThreadDoesntExist: 404,
 		ParentPostDoesntExists: 409,
 		ForumDoesntExists: 404,
 		UserAlreadyExists: 409,
