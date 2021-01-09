@@ -129,11 +129,11 @@ func (t *ForumDelivery) GetForumUsers(w http.ResponseWriter, r *http.Request) {
 
 	slug, ok := mux.Vars(r)[forum.SlugPathName]
 	if !ok {
-		w.WriteHeader(405)
+		w.WriteHeader(400)
 		return
 	}
 
-	limit, since, desc := utils.GetLimitSinceDescQueryParams(r)
+	limit, since, desc := utils.LimitIntSinceStringParams(r)
 
 	response, err := t.UseCase.GetForumUsers(slug, limit, since, desc)
 	if err != nil {

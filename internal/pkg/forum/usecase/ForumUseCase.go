@@ -70,11 +70,15 @@ func (t *ForumUseCase) CreateForumThread(slug string, thread *models.ThreadReque
 	return result, err
 }
 
-func (t *ForumUseCase) GetForumUsers(slug string, limit, since int, desc bool) (*[]models.User, error) {
+func (t *ForumUseCase) GetForumUsers(slug string, limit int , since string, desc bool) (*[]models.User, error) {
 	if slug == "" {
 		return nil, models.IncorrectInputParams
 	}
 
+	_, err := t.repository.GetForum(slug)
+	if err != nil{
+		return nil, models.ForumDoesntExists
+	}
 	return t.repository.GetForumUsers(slug, limit, since, desc)
 }
 

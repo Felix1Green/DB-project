@@ -3,6 +3,7 @@ package repository
 import (
 	"database/sql"
 	"github.com/Felix1Green/DB-project/internal/pkg/models"
+	"log"
 )
 
 type ForumRepository struct {
@@ -92,18 +93,34 @@ func (t *ForumRepository) CreateForumThread(slug string, thread *models.ThreadRe
 }
 
 
-func (t *ForumRepository) GetForumUsers(slug string, limit, since int, desc bool) (*[]models.User, error){
-	query := "SELECT DISTINCT ON (v1.id) v1.nickname, v1.fullname, v1.about, v1.email FROM users v1 " +
-		"JOIN post v2 on (v2.forum = $1) " +
-		"JOIN thread v3 on (v3.forum = $1) " +
-		"WHERE v1.id >= $2 " +
-		"ORDER BY v1.nickname "
+func (t *ForumRepository) GetForumUsers(slug string, limit int, since string, desc bool) (*[]models.User, error){
+	query := "SELECT v1.nickname, v1.fullname, v1.about, v1.email FROM " +
+		"(SELECT DISTINCT v2.nickname, v2. fullname, v2.about, v2.email FROM users v2 " +
+		"left JOIN post v3 on (v3.author = v2.nickname) " +
+		"left JOIN thread v4 on (v4.author = v2.nickname) " +
+		"where (v3.forum = $1 or v4.forum = $1) and v2.nickname > $2 COLLATE \"C\") as v1 " +
+		"ORDER BY v1.nickname COLLATE \"C\" "
 	if desc {
-		query += "DESC "
+		if since != ""{
+			query = "SELECT v1.nickname, v1.fullname, v1.about, v1.email FROM " +
+				"(SELECT DISTINCT v2.nickname, v2. fullname, v2.about, v2.email FROM users v2 " +
+				"left JOIN post v3 on (v3.author = v2.nickname) " +
+				"left JOIN thread v4 on (v4.author = v2.nickname) " +
+				"where (v3.forum = $1 or v4.forum = $1) and v2.nickname < $2 COLLATE \"C\") as v1 " +
+				"ORDER BY v1.nickname COLLATE \"C\" DESC "
+		}else{
+			query = "SELECT v1.nickname, v1.fullname, v1.about, v1.email FROM " +
+				"(SELECT DISTINCT v2.nickname, v2. fullname, v2.about, v2.email FROM users v2 " +
+				"left JOIN post v3 on (v3.author = v2.nickname) " +
+				"left JOIN thread v4 on (v4.author = v2.nickname) " +
+				"where (v3.forum = $1 or v4.forum = $1) and v2.nickname > $2 COLLATE \"C\") as v1 " +
+				"ORDER BY v1.nickname COLLATE \"C\" DESC "
+		}
 	}
 	query += "LIMIT $3"
 	rows, DBErr := t.dbConnection.Query(query, slug, since, limit)
 	if DBErr != nil{
+		log.Println(DBErr)
 		return nil, models.ForumDoesntExists
 	}
 
@@ -111,8 +128,9 @@ func (t *ForumRepository) GetForumUsers(slug string, limit, since int, desc bool
 	resultList := make([]models.User, 0)
 	for rows.Next(){
 		userModel := new(models.User)
-		scanErr := rows.Scan(userModel.Nickname, userModel.FullName, userModel.About, userModel.Email)
+		scanErr := rows.Scan(&userModel.Nickname, &userModel.FullName, &userModel.About, &userModel.Email)
 		if scanErr != nil{
+			log.Println("SCNAER ", scanErr)
 			return nil, models.ForumDoesntExists
 		}
 		resultList = append(resultList, *userModel)

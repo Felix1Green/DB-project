@@ -79,7 +79,7 @@ func (t *ThreadRepository) CreateSinglePost(slug uint64, forumName string, body 
 	rows := t.DBConnection.QueryRow(insertQuery, body.Parent, body.Author, body.Message, slug, forumName, body.Created)
 	if rows == nil || rows.Err() != nil{
 		log.Println("CREATE POSTS", rows.Err())
-		return nil, models.ParentPostDoesntExists
+		return nil, models.NoSuchUser
 	}
 	result := new(models.PostModel)
 	scanErr := rows.Scan(&result.ID, &result.Created)
@@ -96,13 +96,13 @@ func (t *ThreadRepository) CreateSinglePost(slug uint64, forumName string, body 
 	return result, nil
 }
 
-func (t *ThreadRepository) CheckParentsExisting(parentsID uint64) (bool,error){
+func (t *ThreadRepository) CheckParentsExisting(parentsID uint64, slug uint64) (bool,error){
 	if t.DBConnection == nil{
 		return false, models.InternalDBError
 	}
 
-	query := "SELECT id from post where id = $1"
-	counter := t.DBConnection.QueryRow(query, parentsID)
+	query := "SELECT id from post where id = $1 and thread = $2"
+	counter := t.DBConnection.QueryRow(query, parentsID, slug)
 	if counter == nil || counter.Err() != nil{
 		return false, models.InternalDBError
 	}
@@ -140,14 +140,14 @@ func (t *ThreadRepository) GetThreadDetailsBySlug(slug string) (*models.ThreadMo
 		return nil, models.InternalDBError
 	}
 
-	query := "SELECT v1.ID, v1.title, v1.author, v1.forum, v1.message, v1.votes_counter, v1.created FROM thread v1 where slug = $1"
+	query := "SELECT v1.ID, v1.title, v1.author, v1.forum, v1.message, v1.votes_counter, v1.created, v1.slug FROM thread v1 where slug = $1"
 	resultRow := t.DBConnection.QueryRow(query, slug)
 	if resultRow.Err() != nil{
 		return nil, models.ThreadAbsentsError
 	}
 	resultItem := new(models.ThreadModel)
 	ScanErr := resultRow.Scan(&resultItem.ID, &resultItem.Title, &resultItem.Author, &resultItem.Forum, &resultItem.Message,
-		&resultItem.Votes, &resultItem.Created)
+		&resultItem.Votes, &resultItem.Created, &resultItem.Slug)
 	if ScanErr != nil{
 		return nil, models.ThreadAbsentsError
 	}
@@ -158,17 +158,22 @@ func (t *ThreadRepository) UpdateThreadDetails(slug uint64, input *models.Thread
 	if t.DBConnection == nil{
 		return nil, models.InternalDBError
 	}
-
-	query := "UPDATE thread SET title = $1, message = $2 WHERE ID = $3 RETURNING author, forum, votes_counter, created, slug"
+	query := "UPDATE thread SET title = $1, message = $2 WHERE ID = $3 RETURNING author, forum, votes_counter, created, slug, message, title"
+	queryArgs := []interface{}{ input.Title, input.Message, slug}
+	if input.Title == ""{
+		query = "UPDATE thread SET message = $1 WHERE ID = $2 RETURNING author, forum, votes_counter, created, slug, message, title"
+		queryArgs = []interface{}{input.Message, slug}
+	}else if input.Message == ""{
+		query = "UPDATE thread SET title = $1 WHERE ID = $2 RETURNING author, forum, votes_counter, created, slug, message, title"
+		queryArgs = []interface{}{input.Title, slug}
+	}
 	resultItem := new(models.ThreadModel)
-	ScanErr := t.DBConnection.QueryRow(query, input.Title, input.Message, slug).Scan(&resultItem.Author,
-		&resultItem.Forum, &resultItem.Votes, &resultItem.Created, &resultItem.Slug)
+	ScanErr := t.DBConnection.QueryRow(query, queryArgs...).Scan(&resultItem.Author,
+		&resultItem.Forum, &resultItem.Votes, &resultItem.Created, &resultItem.Slug,&resultItem.Message ,&resultItem.Title)
 	if ScanErr != nil{
 		return nil, models.ThreadAbsentsError
 	}
 	resultItem.ID = slug
-	resultItem.Title = input.Title
-	resultItem.Message = input.Message
 	return resultItem, nil
 }
 
@@ -221,6 +226,8 @@ func (t *ThreadRepository) SetThreadVote(threadID uint64, input models.ThreadVot
 		if UpdatingErr != nil{
 			return nil, models.InternalDBError
 		}
+	}else{
+		return nil, models.NoSuchUser
 	}
 	return t.GetThreadDetails(threadID)
 }
@@ -249,7 +256,7 @@ func BuildGetThreadsQuery(sort string, limit int, since int64, desc bool) string
 			if desc{
 				query += "and v1.path[1] IN(SELECT p.path[1] from post p where p.thread = $1 and p.parent = 0 AND p.path[1] < (select p2.path[1] from post p2 where p2.id = $2)  order by p.path[1] DESC limit $3) ORDER BY v1.path[1] DESC, v1.path "
 			}else{
-				query += "and v1.path[1] IN(SELECT p.path[1] from post p where p.thread = $1 and p.parent = 0 AND p.path[1] > (select p2.path[1] from post p2 where p2.id = $2)  order by p.path[1] limit $3) ORDER BY v1.path[1] "
+				query += "and v1.path[1] IN(SELECT p.path[1] from post p where p.thread = $1 and p.parent = 0 AND p.path[1] > (select p2.path[1] from post p2 where p2.id = $2)  order by p.path[1] limit $3) ORDER BY v1.path[1], v1.path "
 			}
 
 		}else{

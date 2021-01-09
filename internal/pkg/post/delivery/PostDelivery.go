@@ -7,6 +7,7 @@ import (
 	"github.com/gorilla/mux"
 	"net/http"
 	"strconv"
+	"strings"
 )
 
 type PostDelivery struct {
@@ -19,18 +20,40 @@ func NewPostDelivery(usecase post.UseCase) *PostDelivery{
 	}
 }
 
+
+func getRelatedParameter(r *http.Request) (bool, bool, bool){
+	related := r.URL.Query().Get(post.RelatedPathName)
+	relatedArr := strings.Split(related, ",")
+	user, forum,thread := false,false,false
+	for _, val := range relatedArr{
+		if val == "user"{
+			user = true
+			continue
+		}else if val == "forum"{
+			forum = true
+			continue
+		}else if val == "thread"{
+			thread = true
+			continue
+		}
+	}
+	return user, forum, thread
+}
+
 func (t *PostDelivery) GetPostDetails(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet{
 		w.WriteHeader(405)
 		return
 	}
+	w.Header().Set("Content-Type", "application/json")
 
 	postID, castErr := strconv.Atoi(mux.Vars(r)[post.PathPostName])
 	if castErr != nil{
 		w.WriteHeader(400)
 		return
 	}
-	resp, err := t.UseCase.GetPostDetails(uint64(postID))
+	user, forum, thread := getRelatedParameter(r)
+	resp, err := t.UseCase.GetPostDetails(uint64(postID), user, thread, forum)
 	if err != nil{
 		w.WriteHeader(models.ErrorsStatusCodes[err])
 		outputBuf, _ := json.Marshal(models.ErrorMessage{
@@ -49,6 +72,7 @@ func (t *PostDelivery) UpdatePostMessage(w http.ResponseWriter, r *http.Request)
 		w.WriteHeader(405)
 		return
 	}
+	w.Header().Set("Content-Type", "application/json")
 
 	postID, castErr := strconv.Atoi(mux.Vars(r)[post.PathPostName])
 	if castErr != nil{

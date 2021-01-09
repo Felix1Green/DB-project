@@ -10,5 +10,5 @@ type Repository interface{
 	SetThreadVote(threadID uint64, input models.ThreadVoteInput) (*models.ThreadModel, error)
 	GetThreadDetailsBySlug(slug string) (*models.ThreadModel, error)
 	CreateSinglePost(slug uint64, forumName string, body models.PostCreateRequestInput)(*models.PostModel, error)
-	CheckParentsExisting(parentsID uint64) (bool,error)
+	CheckParentsExisting(parentsID uint64, slug uint64) (bool,error)
 }

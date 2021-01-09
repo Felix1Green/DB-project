@@ -3,10 +3,13 @@ package post
 import (
 	"database/sql"
 	"fmt"
+	"github.com/Felix1Green/DB-project/internal/pkg/forum"
 	"github.com/Felix1Green/DB-project/internal/pkg/post"
 	"github.com/Felix1Green/DB-project/internal/pkg/post/delivery"
 	"github.com/Felix1Green/DB-project/internal/pkg/post/repository"
 	"github.com/Felix1Green/DB-project/internal/pkg/post/usecase"
+	"github.com/Felix1Green/DB-project/internal/pkg/thread"
+	"github.com/Felix1Green/DB-project/internal/pkg/users"
 	"github.com/gorilla/mux"
 	"net/http"
 )
@@ -28,9 +31,9 @@ func configureRouter(handler *delivery.PostDelivery) *mux.Router{
 	return router
 }
 
-func Start(DBConnection *sql.DB) *Service{
+func Start(DBConnection *sql.DB, us users.Repository, fo forum.Repository, th thread.Repository) *Service{
 	rep := repository.NewPostRepository(DBConnection)
-	uc := usecase.NewPostUseCase(rep)
+	uc := usecase.NewPostUseCase(rep,us, fo, th)
 	handler := delivery.NewPostDelivery(uc)
 	router := configureRouter(handler)
 

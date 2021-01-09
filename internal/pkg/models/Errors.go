@@ -33,6 +33,7 @@ var(
 		UserConflict: 409,
 		EmptyBody: 201,
 		ThreadUniqueErr: 409,
+		PostDoesntExists: 404,
 	}
 )
 

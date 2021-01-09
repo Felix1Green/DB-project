@@ -53,7 +53,7 @@ func InitService(sqlConn *sql.DB) *ServerConfig{
 	usersService := users.Start(sqlConn)
 	forumService := forum.Start(sqlConn, usersService.Repository)
 	threadService := thread.Start(sqlConn)
-	postService := post.Start(sqlConn)
+	postService := post.Start(sqlConn, usersService.Repository, forumService.Repository, threadService.Repository)
 
 	return &ServerConfig{
 		StatusService: statusService,

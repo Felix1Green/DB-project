@@ -25,7 +25,7 @@ func (t *PostRepository) GetPostDetails(id uint64) (*models.PostModel, error) {
 }
 
 func (t *PostRepository) UpdatePost(id uint64, input *models.PostUpdateRequestInput) (*models.PostModel, error){
-	query := "UPDATE post SET message = $1 WHERE id = $2 RETURNING id, parent, author, message, isEdited, forum, thread, created"
+	query := "UPDATE post SET message = $1, isedited = true WHERE id = $2 RETURNING id, parent, author, message, isEdited, forum, thread, created"
 	result := new(models.PostModel)
 	err := t.dbConnection.QueryRow(query, input.Message, id).Scan(&result.ID, &result.Parent, &result.Author,&result.Message, &result.IsEdited,
 		&result.Forum, &result.Thread, &result.Created)

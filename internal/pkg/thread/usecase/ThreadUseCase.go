@@ -19,9 +19,6 @@ func NewThreadUseCase(repository thread.Repository) *ThreadUseCase{
 
 func (t *ThreadUseCase) CreatePosts(slug string, body *[]models.PostCreateRequestInput) (*[]models.PostModel, error) {
 	result := make([]models.PostModel,0)
-	if len(*body) < 1{
-		return &result, nil
-	}
 
 	threadID, castErr := strconv.Atoi(slug)
 	th := new(models.ThreadModel)
@@ -41,7 +38,7 @@ func (t *ThreadUseCase) CreatePosts(slug string, body *[]models.PostCreateReques
 	timeString := time.Now()
 	for _, val := range *body{
 		if val.Parent != 0{
-			avail, err := t.repository.CheckParentsExisting(val.Parent)
+			avail, err := t.repository.CheckParentsExisting(val.Parent, th.ID)
 			if !avail || err != nil{
 				return nil, err
 			}
@@ -72,15 +69,25 @@ func (t *ThreadUseCase) GetThreadDetails(slug string) (*models.ThreadModel, erro
 
 func (t *ThreadUseCase) UpdateThreadDetails(slug string, input *models.ThreadUpdateInput) (*models.ThreadModel, error){
 	thr, castErr := strconv.Atoi(slug)
-	threadID := uint64(thr)
-	if castErr != nil{
-		th, err := t.repository.GetThreadDetailsBySlug(slug)
+	threadObj := new(models.ThreadModel)
+	if castErr != nil {
+		obj, err := t.repository.GetThreadDetailsBySlug(slug)
 		if err != nil{
 			return nil, models.ThreadDoesntExist
 		}
-		threadID = th.ID
+		threadObj = obj
+	}else{
+		obj, err := t.repository.GetThreadDetails(uint64(thr))
+		if err != nil{
+			return nil, models.ThreadDoesntExist
+		}
+		threadObj = obj
 	}
-	return t.repository.UpdateThreadDetails(threadID, input)
+	if input.Title == "" && input.Message == ""{
+		return threadObj, nil
+	}
+
+	return t.repository.UpdateThreadDetails(threadObj.ID, input)
 }
 
 func (t *ThreadUseCase) GetThreadPosts(threadSlug string, limit int, since int64, sort string, desc bool) (*[]models.PostModel, error){
@@ -99,6 +106,11 @@ func (t *ThreadUseCase) GetThreadPosts(threadSlug string, limit int, since int64
 			return nil, models.ThreadDoesntExist
 		}
 		threadID = threadObj.ID
+	}else{
+		_, err := t.repository.GetThreadDetails(threadID)
+		if err != nil{
+			return nil, models.ThreadDoesntExist
+		}
 	}
 	return t.repository.GetThreadPosts(threadID, limit, since, sort, desc)
 }

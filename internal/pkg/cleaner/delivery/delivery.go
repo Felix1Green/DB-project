@@ -22,6 +22,7 @@ func (t *CleanerDelivery) GetStatus(w http.ResponseWriter, r *http.Request){
 		w.WriteHeader(405)
 		return
 	}
+	w.Header().Set("Content-Type", "application/json")
 
 	resp, err := t.Repository.Status()
 	if err != nil{
@@ -40,6 +41,7 @@ func (t *CleanerDelivery) ClearDB(w http.ResponseWriter, r *http.Request){
 		w.WriteHeader(405)
 		return
 	}
+	w.Header().Set("Content-Type", "application/json")
 
 	err := t.Repository.Clear()
 	if err != nil{
