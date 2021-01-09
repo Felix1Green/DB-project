@@ -1,8 +1,8 @@
 {
-  "Domain": "app",
-  "Port": 8080,
+  "Domain": "",
+  "Port": 5000,
   "Database": {
-    "Domain": "postgresql",
+    "Domain": "127.0.0.1",
     "Port": "5432",
     "User": "main_user",
     "Password": "some_password",

@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"fmt"
 	"github.com/Felix1Green/DB-project/internal/pkg/models"
-	"log"
 	"strings"
 )
 
@@ -44,7 +43,6 @@ func (t* ThreadRepository) CreatePosts(slug uint64, forumName string, body *[]mo
 	resultQuery += " RETURNING id, created"
 	rows, DBErr := t.DBConnection.Query(resultQuery, *values...)
 	if DBErr != nil || rows == nil || rows.Err() != nil{
-		log.Println("CREATE POSTS", DBErr)
 		return nil, models.ParentPostDoesntExists
 	}
 	resultList := make([]models.PostModel, 0)
@@ -69,7 +67,6 @@ func (t *ThreadRepository) CreateSinglePost(slug uint64, forumName string, body 
 		return nil, models.InternalDBError
 	}
 
-	log.Println("ARGS", slug, forumName, body.Parent, body.Author)
 	insertQuery := ""
 	if body.Parent == 0{
 		insertQuery = "INSERT INTO post (parent,author,message,thread,forum, created, path) VALUES ($1,$2,$3,$4,$5,$6, array(select currval('post_id_seq')::integer)) RETURNING id, created";
@@ -78,13 +75,11 @@ func (t *ThreadRepository) CreateSinglePost(slug uint64, forumName string, body 
 	}
 	rows := t.DBConnection.QueryRow(insertQuery, body.Parent, body.Author, body.Message, slug, forumName, body.Created)
 	if rows == nil || rows.Err() != nil{
-		log.Println("CREATE POSTS", rows.Err())
 		return nil, models.NoSuchUser
 	}
 	result := new(models.PostModel)
 	scanErr := rows.Scan(&result.ID, &result.Created)
 	if scanErr != nil{
-		log.Println(scanErr)
 		return nil, models.InternalDBError
 	}
 	result.Author = body.Author
@@ -184,7 +179,6 @@ func (t *ThreadRepository) GetThreadPosts(threadID uint64, limit int, since int6
 	}
 
 	query := BuildGetThreadsQuery(sort, limit, since, desc)
-	log.Println("QUERY ", query, sort, limit, desc, threadID, since)
 	resultRows, DBErr := t.DBConnection.Query(query, threadID, since, limit)
 	if DBErr != nil || resultRows == nil || resultRows.Err() != nil{
 		return nil, models.ThreadAbsentsError
@@ -220,7 +214,6 @@ func (t *ThreadRepository) SetThreadVote(threadID uint64, input models.ThreadVot
 	query := "INSERT INTO vote (thread_id, user_name, rating) VALUES ($1,$2,$3) on conflict(thread_id, user_name) do update set rating = $3 RETURNING ID"
 	var result uint64
 	ScanErr := t.DBConnection.QueryRow(query,threadID, input.Nickname, input.Voice).Scan(&result)
-	log.Println(ScanErr)
 	if ScanErr == nil{
 		UpdatingErr := t.IncrementThreadVotes(threadID)
 		if UpdatingErr != nil{

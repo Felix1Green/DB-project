@@ -3,7 +3,6 @@ package utils
 import (
 	"github.com/Felix1Green/DB-project/internal/pkg/models"
 	"github.com/spf13/viper"
-	"log"
 )
 
 type ServiceConfig struct {
@@ -21,7 +20,6 @@ func Run(configPath string) (*ServiceConfig, error) {
 	viper.SetConfigFile(configPath)
 	err := viper.ReadInConfig()
 	if err != nil {
-		log.Printf("Unable to read config file: %s", err)
 		return nil, models.IncorrectPath
 	}
 

@@ -3,7 +3,6 @@ package repository
 import (
 	"database/sql"
 	"github.com/Felix1Green/DB-project/internal/pkg/models"
-	"log"
 )
 
 type ForumRepository struct {
@@ -120,7 +119,6 @@ func (t *ForumRepository) GetForumUsers(slug string, limit int, since string, de
 	query += "LIMIT $3"
 	rows, DBErr := t.dbConnection.Query(query, slug, since, limit)
 	if DBErr != nil{
-		log.Println(DBErr)
 		return nil, models.ForumDoesntExists
 	}
 
@@ -130,7 +128,6 @@ func (t *ForumRepository) GetForumUsers(slug string, limit int, since string, de
 		userModel := new(models.User)
 		scanErr := rows.Scan(&userModel.Nickname, &userModel.FullName, &userModel.About, &userModel.Email)
 		if scanErr != nil{
-			log.Println("SCNAER ", scanErr)
 			return nil, models.ForumDoesntExists
 		}
 		resultList = append(resultList, *userModel)

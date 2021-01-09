@@ -34,7 +34,6 @@ func CreateDBConnection(config *utils.ServiceConfig)(*sql.DB,error){
 
 	PostgreSQLConnection, DBErr := sql.Open("postgres", psqlInfo)
 	if DBErr != nil {
-		log.Println(DBErr)
 		return nil, errors.New("no postgresql connection")
 	}
 
