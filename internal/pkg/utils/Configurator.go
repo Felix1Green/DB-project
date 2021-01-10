@@ -5,6 +5,10 @@ import (
 	"github.com/spf13/viper"
 )
 
+var(
+	SlugCreatedSign = "......"
+)
+
 type ServiceConfig struct {
 	Domain           string
 	Port             int

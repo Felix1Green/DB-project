@@ -48,7 +48,7 @@ func (t *ForumUseCase) CreateForumThread(slug string, thread *models.ThreadReque
 	isEmpty := false
 	if thread.Slug == ""{
 		isEmpty = true
-		thread.Slug = utils.RandStringRunes(13)
+		thread.Slug = utils.SlugCreatedSign + utils.RandStringRunes(10)
 	}
 
 	user, err := t.userRepository.GetProfile(thread.Author)
@@ -58,7 +58,7 @@ func (t *ForumUseCase) CreateForumThread(slug string, thread *models.ThreadReque
 
 	thread.Author = user.Nickname
 
-	forumObj, err := t.repository.GetForum(slug)
+	forumObj, err := t.repository.GetForumSimple(slug)
 	if err != nil{
 		return nil, models.ForumDoesntExists
 	}
@@ -75,7 +75,7 @@ func (t *ForumUseCase) GetForumUsers(slug string, limit int , since string, desc
 		return nil, models.IncorrectInputParams
 	}
 
-	_, err := t.repository.GetForum(slug)
+	_, err := t.repository.GetForumSimple(slug)
 	if err != nil{
 		return nil, models.ForumDoesntExists
 	}
@@ -87,7 +87,7 @@ func (t *ForumUseCase) GetForumThreads(slug string, limit int, since string, des
 		return nil, models.IncorrectInputParams
 	}
 
-	_, err := t.repository.GetForum(slug)
+	_, err := t.repository.GetForumSimple(slug)
 	if err != nil{
 		return nil, models.ForumDoesntExists
 	}

@@ -14,7 +14,7 @@ type ThreadModel struct {
 	Author string `json:"author"`
 	Message string `json:"message"`
 	Created string `json:"created"`
-	Votes uint64 `json:"votes"`
+	Votes int64 `json:"votes"`
 	Forum string `json:"forum"`
 	Slug string `json:"slug"`
 }

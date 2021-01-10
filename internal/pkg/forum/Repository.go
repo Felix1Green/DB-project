@@ -8,4 +8,5 @@ type Repository interface{
 	CreateForumThread(slug string, thread *models.ThreadRequestInput) (*models.ThreadModel, error)
 	GetForumUsers(slug string, limit int, since string, desc bool) (*[]models.User, error)
 	GetForumThreads(slug string, limit int, since string, desc bool) (*[]models.ThreadModel, error)
+	GetForumSimple(slug string) (*models.Forum, error)
 }

@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"github.com/Felix1Green/DB-project/internal/pkg/models"
+	"github.com/Felix1Green/DB-project/internal/pkg/utils"
 	"strings"
 )
 
@@ -127,6 +128,9 @@ func (t *ThreadRepository) GetThreadDetails(slug uint64) (*models.ThreadModel, e
 	if ScanErr != nil{
 		return nil, models.ThreadAbsentsError
 	}
+	if strings.HasPrefix(resultItem.Slug, utils.SlugCreatedSign){
+		resultItem.Slug = ""
+	}
 	return resultItem, nil
 }
 
@@ -145,6 +149,9 @@ func (t *ThreadRepository) GetThreadDetailsBySlug(slug string) (*models.ThreadMo
 		&resultItem.Votes, &resultItem.Created, &resultItem.Slug)
 	if ScanErr != nil{
 		return nil, models.ThreadAbsentsError
+	}
+	if strings.HasPrefix(resultItem.Slug, utils.SlugCreatedSign){
+		resultItem.Slug = ""
 	}
 	return resultItem, nil
 }
@@ -169,6 +176,9 @@ func (t *ThreadRepository) UpdateThreadDetails(slug uint64, input *models.Thread
 		return nil, models.ThreadAbsentsError
 	}
 	resultItem.ID = slug
+	if strings.HasPrefix(resultItem.Slug, utils.SlugCreatedSign){
+		resultItem.Slug = ""
+	}
 	return resultItem, nil
 }
 
@@ -214,12 +224,7 @@ func (t *ThreadRepository) SetThreadVote(threadID uint64, input models.ThreadVot
 	query := "INSERT INTO vote (thread_id, user_name, rating) VALUES ($1,$2,$3) on conflict(thread_id, user_name) do update set rating = $3 RETURNING ID"
 	var result uint64
 	ScanErr := t.DBConnection.QueryRow(query,threadID, input.Nickname, input.Voice).Scan(&result)
-	if ScanErr == nil{
-		UpdatingErr := t.IncrementThreadVotes(threadID)
-		if UpdatingErr != nil{
-			return nil, models.InternalDBError
-		}
-	}else{
+	if ScanErr != nil{
 		return nil, models.NoSuchUser
 	}
 	return t.GetThreadDetails(threadID)
