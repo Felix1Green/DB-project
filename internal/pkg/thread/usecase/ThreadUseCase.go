@@ -58,36 +58,24 @@ func (t *ThreadUseCase) GetThreadDetails(slug string) (*models.ThreadModel, erro
 	th, err := strconv.Atoi(slug)
 	threadID := uint64(th)
 	if err != nil{
-		threadObj, err := t.repository.GetThreadDetailsBySlug(slug)
-		if err != nil{
-			return nil, models.ThreadDoesntExist
-		}
-		threadID = threadObj.ID
+		resp, err :=  t.repository.GetThreadDetailsBySlug(slug)
+		return resp, err
 	}
-	return t.repository.GetThreadDetails(threadID)
+	resp, err := t.repository.GetThreadDetails(threadID)
+	return resp, err
 }
 
 func (t *ThreadUseCase) UpdateThreadDetails(slug string, input *models.ThreadUpdateInput) (*models.ThreadModel, error){
-	thr, castErr := strconv.Atoi(slug)
-	threadObj := new(models.ThreadModel)
-	if castErr != nil {
-		obj, err := t.repository.GetThreadDetailsBySlug(slug)
-		if err != nil{
-			return nil, models.ThreadDoesntExist
-		}
-		threadObj = obj
-	}else{
-		obj, err := t.repository.GetThreadDetails(uint64(thr))
-		if err != nil{
-			return nil, models.ThreadDoesntExist
-		}
-		threadObj = obj
+	threadObj, err := t.GetThreadDetails(slug)
+	if err != nil{
+		return nil, models.ThreadAbsentsError
 	}
 	if input.Title == "" && input.Message == ""{
 		return threadObj, nil
 	}
 
-	return t.repository.UpdateThreadDetails(threadObj.ID, input)
+	resp, err :=  t.repository.UpdateThreadDetails(threadObj.ID, input)
+	return resp, err
 }
 
 func (t *ThreadUseCase) GetThreadPosts(threadSlug string, limit int, since int64, sort string, desc bool) (*[]models.PostModel, error){
@@ -125,5 +113,6 @@ func (t *ThreadUseCase) SetThreadVote(threadSlug string, input models.ThreadVote
 		}
 		threadID = threadObj.ID
 	}
-	return t.repository.SetThreadVote(threadID, input)
+	resp, err :=  t.repository.SetThreadVote(threadID, input)
+	return resp, err
 }

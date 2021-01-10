@@ -3,6 +3,8 @@ package repository
 import (
 	"database/sql"
 	"github.com/Felix1Green/DB-project/internal/pkg/models"
+	"github.com/Felix1Green/DB-project/internal/pkg/utils"
+	"strings"
 )
 
 type ForumRepository struct {
@@ -18,12 +20,7 @@ func NewForumRepository(connection *sql.DB) *ForumRepository{
 
 func (t *ForumRepository) CreateForum(input *models.ForumRequestInput) (*models.Forum, error) {
 	query := "INSERT INTO forum (title, user_id, slug) VALUES ($1, $2, $3) returning title, user_id, slug"
-	uniqueErrQuery := "SELECT v1.title, v1.user_id, v1.slug, v1.cnt, COUNT(v3.id) FROM ( " +
-		"SELECT v1.title, v1.user_id, v1.slug, COUNT(v2.id) as cnt FROM forum v1 " +
-		"left join thread v2 on (v2.forum=v1.slug) " +
-		"where v1.slug = $1 group by v1.title, v1.user_id, v1.slug ) v1 " +
-		"left join post v3 on (v3.forum = v1.slug) " +
-		"group by v1.title, v1.user_id, v1.slug, v1.cnt"
+	uniqueErrQuery := "SELECT v1.title, v1.user_id, v1.slug, v1.threads, v1.posts FROM forum v1 where v1.slug = $1"
 	item := new(models.Forum)
 	scanErr := t.dbConnection.QueryRow(query, input.Title, input.User, input.Slug).Scan(&item.Title, &item.User, &item.Slug)
 	if scanErr != nil {
@@ -39,12 +36,7 @@ func (t *ForumRepository) CreateForum(input *models.ForumRequestInput) (*models.
 }
 
 func (t *ForumRepository) GetForum(slug string) (*models.Forum, error) {
-	query := "SELECT v1.title, v1.user_id, v1.slug, v1.cnt, COUNT(v3.id) FROM (" +
-		"SELECT v1.title, v1.user_id, v1.slug, COUNT(v2.id) as cnt FROM forum v1 " +
-		"left join thread v2 on (v2.forum=v1.slug) " +
-		"where v1.slug = $1 group by v1.title, v1.user_id, v1.slug ) v1 " +
-		"left join post v3 on (v3.forum = v1.slug) " +
-		"group by v1.title, v1.user_id, v1.slug, v1.cnt "
+	query := "SELECT v1.title, v1.user_id, v1.slug, v1.threads, v1.posts FROM forum v1 where v1.slug = $1"
 	res := new(models.Forum)
 	ScanErr := t.dbConnection.QueryRow(query, slug).Scan(&res.Title, &res.User, &res.Slug, &res.Threads, &res.Posts)
 	if ScanErr != nil{
@@ -52,6 +44,16 @@ func (t *ForumRepository) GetForum(slug string) (*models.Forum, error) {
 	}
 
 	return res,nil
+}
+
+func (t *ForumRepository) GetForumSimple(slug string) (*models.Forum, error){
+	query := "SELECT v1.slug, v1.title, v1.user_id FROM forum v1 where v1.slug = $1"
+	res := new(models.Forum)
+	ScanErr := t.dbConnection.QueryRow(query, slug).Scan(&res.Slug, &res.Title, &res.User)
+	if ScanErr != nil{
+		return nil, models.ForumDoesntExists
+	}
+	return res, nil
 }
 
 
@@ -64,8 +66,8 @@ func (t *ForumRepository) CreateForumThread(slug string, thread *models.ThreadRe
 		query = "INSERT INTO Thread (title, author, message, forum,slug, created) VALUES ($1,$2,$3,$4,$5,$6) RETURNING ID, CREATED"
 		queryArgs = append(queryArgs, thread.Created)
 	}
-	uniqueErrQuery := "SELECT v1.id, v1.title, v1.author, v1.forum, v1.message, COUNT(v2.id), v1.created, v1.slug " +
-		"FROM Thread v1 LEFT JOIN post v2 on(v2.thread = v1.id) WHERE v1.slug = $1 GROUP BY v1.id"
+	uniqueErrQuery := "SELECT v1.id, v1.title, v1.author, v1.forum, v1.message, v1.votes_counter, v1.created, v1.slug " +
+		"FROM Thread v1 WHERE v1.slug = $1 GROUP BY v1.id"
 
 	result := t.dbConnection.QueryRow(query, queryArgs...)
 	var resultID uint64
@@ -76,6 +78,9 @@ func (t *ForumRepository) CreateForumThread(slug string, thread *models.ThreadRe
 			&resultThread.Author, &resultThread.Forum,&resultThread.Message, &resultThread.Votes, &resultThread.Created, &resultThread.Slug)
 		if scanErr != nil{
 			return nil, models.ForumDoesntExists
+		}
+		if strings.HasPrefix(resultThread.Slug, utils.SlugCreatedSign){
+			resultThread.Slug = ""
 		}
 		return resultThread, models.ThreadUniqueErr
 	}
@@ -93,27 +98,15 @@ func (t *ForumRepository) CreateForumThread(slug string, thread *models.ThreadRe
 
 
 func (t *ForumRepository) GetForumUsers(slug string, limit int, since string, desc bool) (*[]models.User, error){
-	query := "SELECT v1.nickname, v1.fullname, v1.about, v1.email FROM " +
-		"(SELECT DISTINCT v2.nickname, v2. fullname, v2.about, v2.email FROM users v2 " +
-		"left JOIN post v3 on (v3.author = v2.nickname) " +
-		"left JOIN thread v4 on (v4.author = v2.nickname) " +
-		"where (v3.forum = $1 or v4.forum = $1) and v2.nickname > $2 COLLATE \"C\") as v1 " +
-		"ORDER BY v1.nickname COLLATE \"C\" "
+	query := "SELECT v1.nickname, v1.fullname, v1.about, v1.email FROM forum_users v2 JOIN users v1 on(v1.nickname = v2.user_nickname) " +
+		"where v2.forum = $1 and v1.nickname > $2 COLLATE \"C\" ORDER BY v1.nickname COLLATE \"C\" "
 	if desc {
 		if since != ""{
-			query = "SELECT v1.nickname, v1.fullname, v1.about, v1.email FROM " +
-				"(SELECT DISTINCT v2.nickname, v2. fullname, v2.about, v2.email FROM users v2 " +
-				"left JOIN post v3 on (v3.author = v2.nickname) " +
-				"left JOIN thread v4 on (v4.author = v2.nickname) " +
-				"where (v3.forum = $1 or v4.forum = $1) and v2.nickname < $2 COLLATE \"C\") as v1 " +
-				"ORDER BY v1.nickname COLLATE \"C\" DESC "
+			query = "SELECT v1.nickname, v1.fullname, v1.about, v1.email FROM forum_users v2 JOIN users v1 on(v1.nickname = v2.user_nickname) " +
+				"where v2.forum = $1 and v1.nickname < $2 COLLATE \"C\" ORDER BY v1.nickname COLLATE \"C\" DESC "
 		}else{
-			query = "SELECT v1.nickname, v1.fullname, v1.about, v1.email FROM " +
-				"(SELECT DISTINCT v2.nickname, v2. fullname, v2.about, v2.email FROM users v2 " +
-				"left JOIN post v3 on (v3.author = v2.nickname) " +
-				"left JOIN thread v4 on (v4.author = v2.nickname) " +
-				"where (v3.forum = $1 or v4.forum = $1) and v2.nickname > $2 COLLATE \"C\") as v1 " +
-				"ORDER BY v1.nickname COLLATE \"C\" DESC "
+			query = "SELECT v1.nickname, v1.fullname, v1.about, v1.email FROM forum_users v2 JOIN users v1 on(v1.nickname = v2.user_nickname) " +
+				"where v2.forum = $1 and v1.nickname > $2 COLLATE \"C\" ORDER BY v1.nickname COLLATE \"C\" DESC "
 		}
 	}
 	query += "LIMIT $3"
@@ -139,19 +132,16 @@ func (t *ForumRepository) GetForumThreads(slug string, limit int, since string, 
 	queryArgs := []interface{}{
 		slug, limit,
 	}
-	query := "SELECT v1.id, v1.title, v1.author, v1.forum, v1.message, COUNT(v2.id), v1.created, v1.slug FROM thread v1 " +
-		"left join post v2 on (v2.thread = v1.id) " +
+	query := "SELECT v1.id, v1.title, v1.author, v1.forum, v1.message, v1.votes_counter, v1.created, v1.slug FROM thread v1 " +
 		"where v1.forum = $1 " +
 		"GROUP BY v1.id, v1.created ORDER BY v1.created "
 	if since != ""{
 		if desc{
-			query = "SELECT v1.id, v1.title, v1.author, v1.forum, v1.message, COUNT(v2.id), v1.created, v1.slug FROM thread v1 " +
-				"left join post v2 on (v2.thread = v1.id) " +
+			query = "SELECT v1.id, v1.title, v1.author, v1.forum, v1.message, v1.votes_counter, v1.created, v1.slug FROM thread v1 " +
 				"where v1.forum = $1 and v1.created <= $3 " +
 				"GROUP BY v1.id, v1.created ORDER BY v1.created "
 		}else{
-			query = "SELECT v1.id, v1.title, v1.author, v1.forum, v1.message, COUNT(v2.id), v1.created, v1.slug FROM thread v1 " +
-				"left join post v2 on (v2.thread = v1.id) " +
+			query = "SELECT v1.id, v1.title, v1.author, v1.forum, v1.message, v1.votes_counter, v1.created, v1.slug FROM thread v1 " +
 				"where v1.forum = $1 and v1.created >= $3 " +
 				"GROUP BY v1.id, v1.created ORDER BY v1.created "
 		}
@@ -174,6 +164,9 @@ func (t *ForumRepository) GetForumThreads(slug string, limit int, since string, 
 		ScanErr := rows.Scan(&model.ID, &model.Title, &model.Author,&model.Forum,&model.Message,&model.Votes, &model.Created, &model.Slug)
 		if ScanErr != nil{
 			return nil, models.ForumDoesntExists
+		}
+		if strings.HasPrefix(model.Slug, utils.SlugCreatedSign){
+			model.Slug = ""
 		}
 		resultList = append(resultList, *model)
 	}

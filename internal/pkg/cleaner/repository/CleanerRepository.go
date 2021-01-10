@@ -27,7 +27,7 @@ func (t *CleanerRepository) Status()(*models.Status, error){
 }
 
 func (t *CleanerRepository) Clear() error{
-	_, err := t.DBConnection.Exec("TRUNCATE users, forum, thread, post, vote")
+	_, err := t.DBConnection.Exec("TRUNCATE users, forum, thread, post, vote CASCADE ")
 	if err != nil{
 		return models.InternalDBError
 	}
