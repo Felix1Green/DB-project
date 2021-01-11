@@ -1,3 +1,11 @@
+ALTER SYSTEM SET wal_buffers = '6912kB';
+ALTER SYSTEM SET default_statistics_target = '100';
+ALTER SYSTEM SET effective_io_concurrency = '200';
+ALTER SYSTEM SET max_worker_processes = '4';
+ALTER SYSTEM SET max_parallel_workers_per_gather = '2';
+ALTER SYSTEM SET max_parallel_workers = '4';
+ALTER SYSTEM SET max_parallel_maintenance_workers = '2';
+
 CREATE EXTENSION IF NOT EXISTS citext;
 
 create table users
@@ -10,7 +18,7 @@ create table users
 );
 
 CREATE INDEX index_get_users_info on users(nickname, fullname, about, email);
-CREATE INDEX index_users_nickname on users USING hash(nickname);
+
 
 create table forum
 (
