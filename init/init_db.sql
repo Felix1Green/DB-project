@@ -8,7 +8,7 @@ ALTER SYSTEM SET max_parallel_maintenance_workers = '2';
 
 CREATE EXTENSION IF NOT EXISTS citext;
 
-create table users
+create unlogged table users
 (
     id serial not null primary key,
     nickname citext not null unique,
@@ -20,7 +20,7 @@ create table users
 CREATE INDEX index_get_users_info on users(nickname, fullname, about, email);
 
 
-create table forum
+create unlogged table forum
 (
     id serial not null primary key,
     title varchar(128) not null,
@@ -33,7 +33,7 @@ create table forum
 CREATE INDEX index_forum_user_fk on forum(user_id);
 CREATE INDEX index_forum_info on forum(slug, title, user_id);
 
-create table thread
+create unlogged table thread
 (
     id serial not null primary key ,
     title varchar(128) not null,
@@ -49,7 +49,7 @@ CREATE INDEX index_thread_forum_fk on thread(id, forum);
 CREATE INDEX index_thread_info on thread(forum, created);
 
 
-create table post
+create unlogged table post
 (
     id serial primary key ,
     parent int not null ,
@@ -66,7 +66,7 @@ CREATE INDEX index_post_forum_fk on post(forum);
 CREATE INDEX index_post_thread_fk on post(thread);
 CREATE INDEX index_post_path_parent_info on post((path[1]), path);
 
-create table vote
+create unlogged table vote
 (
     id serial not null primary key ,
     thread_id int not null,
@@ -76,7 +76,7 @@ create table vote
 );
 
 
-create table forum_users(
+create unlogged table forum_users(
     id serial primary key,
     forum citext not null references forum(slug),
     user_nickname citext not null references users(nickname),
