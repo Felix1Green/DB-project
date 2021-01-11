@@ -1,6 +1,9 @@
 package models
 
-import "time"
+import (
+	"github.com/go-openapi/strfmt"
+	"time"
+)
 
 type PostUpdateRequestInput struct {
 	Message string `json:"message"`
@@ -28,6 +31,6 @@ type PostModel struct {
 	IsEdited bool `json:"isEdited"`
 	Forum string `json:"forum"`
 	Thread uint64 `json:"thread"`
-	Created string `json:"created"`
+	Created strfmt.DateTime `json:"created"`
 }
 

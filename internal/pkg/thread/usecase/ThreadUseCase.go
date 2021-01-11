@@ -20,20 +20,9 @@ func NewThreadUseCase(repository thread.Repository) *ThreadUseCase{
 func (t *ThreadUseCase) CreatePosts(slug string, body *[]models.PostCreateRequestInput) (*[]models.PostModel, error) {
 	result := make([]models.PostModel,0)
 
-	threadID, castErr := strconv.Atoi(slug)
-	th := new(models.ThreadModel)
-	if castErr != nil{
-		thr, err := t.repository.GetThreadDetailsBySlug(slug)
-		if err != nil{
-			return nil, models.ThreadAbsentsError
-		}
-		th = thr
-	}else{
-		thr, err := t.repository.GetThreadDetails(uint64(threadID))
-		if err != nil{
-			return nil, models.ThreadAbsentsError
-		}
-		th = thr
+	th, err := t.GetThreadDetails(slug)
+	if err != nil {
+		return nil, err
 	}
 	timeString := time.Now()
 	for _, val := range *body{

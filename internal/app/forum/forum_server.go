@@ -1,7 +1,6 @@
 package forum
 
 import (
-	"database/sql"
 	"fmt"
 	"github.com/Felix1Green/DB-project/internal/pkg/forum"
 	"github.com/Felix1Green/DB-project/internal/pkg/forum/delivery"
@@ -9,6 +8,7 @@ import (
 	"github.com/Felix1Green/DB-project/internal/pkg/forum/usecase"
 	Users "github.com/Felix1Green/DB-project/internal/pkg/users"
 	"github.com/gorilla/mux"
+	"github.com/jackc/pgx"
 )
 
 type Service struct {
@@ -32,7 +32,7 @@ func configureRouter(handler *delivery.ForumDelivery) *mux.Router{
 }
 
 
-func Start(DBConnection *sql.DB, usersRepository Users.Repository) *Service{
+func Start(DBConnection *pgx.ConnPool, usersRepository Users.Repository) *Service{
 	rep := repository.NewForumRepository(DBConnection)
 	uc := usecase.NewForumUseCase(rep, usersRepository)
 	handler := delivery.NewForumDelivery(uc)

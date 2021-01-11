@@ -1,5 +1,7 @@
 package models
 
+import "github.com/go-openapi/strfmt"
+
 type ThreadRequestInput struct {
 	Title string `json:"title"`
 	Author string `json:"author"`
@@ -13,7 +15,7 @@ type ThreadModel struct {
 	Title string `json:"title"`
 	Author string `json:"author"`
 	Message string `json:"message"`
-	Created string `json:"created"`
+	Created strfmt.DateTime `json:"created"`
 	Votes int64 `json:"votes"`
 	Forum string `json:"forum"`
 	Slug string `json:"slug"`

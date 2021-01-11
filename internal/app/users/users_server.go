@@ -1,13 +1,13 @@
 package users
 
 import (
-	"database/sql"
 	"fmt"
 	"github.com/Felix1Green/DB-project/internal/pkg/users"
 	"github.com/Felix1Green/DB-project/internal/pkg/users/delivery"
 	"github.com/Felix1Green/DB-project/internal/pkg/users/repository"
 	"github.com/Felix1Green/DB-project/internal/pkg/users/usecase"
 	"github.com/gorilla/mux"
+	"github.com/jackc/pgx"
 	"net/http"
 )
 
@@ -28,7 +28,7 @@ func configureRouter(handler *delivery.UserDelivery) *mux.Router{
 	return router
 }
 
-func Start(sqlConn *sql.DB) *Service{
+func Start(sqlConn *pgx.ConnPool) *Service{
 	rep := repository.NewUsersRepository(sqlConn)
 	uc := usecase.NewUserUseCase(rep)
 	handler := delivery.NewUserDelivery(uc)

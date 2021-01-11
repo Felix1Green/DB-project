@@ -1,10 +1,10 @@
 package cleaner
 
 import (
-	"database/sql"
 	"github.com/Felix1Green/DB-project/internal/pkg/cleaner/delivery"
 	"github.com/Felix1Green/DB-project/internal/pkg/cleaner/repository"
 	"github.com/gorilla/mux"
+	"github.com/jackc/pgx"
 )
 
 type Service struct {
@@ -21,7 +21,7 @@ func configureRouter(handler *delivery.CleanerDelivery)*mux.Router{
 	return router
 }
 
-func Start(DbConnection *sql.DB) *Service{
+func Start(DbConnection *pgx.ConnPool) *Service{
 	rep := repository.NewCleanerRepository(DbConnection)
 	handler := delivery.NewCleanerDelivery(rep)
 	router := configureRouter(handler)
