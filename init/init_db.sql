@@ -32,7 +32,6 @@ create table forum
 
 CREATE INDEX index_forum_user_fk on forum(user_id);
 CREATE INDEX index_forum_info on forum(slug, title, user_id);
-CREATE INDEX index_forum_slug on forum USING hash(slug);
 
 create table thread
 (
@@ -47,7 +46,6 @@ create table thread
 );
 
 CREATE INDEX index_thread_forum_fk on thread(forum);
-CREATE INDEX index_thread_slug_hash on thread using hash(slug);
 CREATE INDEX index_thread_info on thread(forum, created);
 
 
@@ -65,9 +63,7 @@ create table post
 );
 
 CREATE INDEX index_post_forum_fk on post(forum);
-CREATE INDEX index_post_author_fk on post(author);
 CREATE INDEX index_post_thread_fk on post(thread);
-CREATE INDEX index_post_path_info on post(thread, path);
 CREATE INDEX index_post_path_parent_info on post((path[1]), path);
 
 create table vote
