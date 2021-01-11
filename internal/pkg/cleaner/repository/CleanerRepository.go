@@ -1,15 +1,15 @@
 package repository
 
 import (
-	"database/sql"
 	"github.com/Felix1Green/DB-project/internal/pkg/models"
+	"github.com/jackc/pgx"
 )
 
 type CleanerRepository struct {
-	DBConnection *sql.DB
+	DBConnection *pgx.ConnPool
 }
 
-func NewCleanerRepository(conn *sql.DB) *CleanerRepository{
+func NewCleanerRepository(conn *pgx.ConnPool) *CleanerRepository{
 	return &CleanerRepository{
 		DBConnection: conn,
 	}

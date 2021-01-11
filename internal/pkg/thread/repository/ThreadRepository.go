@@ -1,19 +1,19 @@
 package repository
 
 import (
-	"database/sql"
 	"fmt"
 	"github.com/Felix1Green/DB-project/internal/pkg/models"
 	"github.com/Felix1Green/DB-project/internal/pkg/utils"
+	"github.com/jackc/pgx"
 	"strings"
 )
 
 
 type ThreadRepository struct {
-	DBConnection *sql.DB
+	DBConnection *pgx.ConnPool
 }
 
-func NewThreadRepository(conn *sql.DB) *ThreadRepository{
+func NewThreadRepository(conn *pgx.ConnPool) *ThreadRepository{
 	return &ThreadRepository{
 		DBConnection: conn,
 	}
@@ -75,13 +75,13 @@ func (t *ThreadRepository) CreateSinglePost(slug uint64, forumName string, body 
 		insertQuery = "INSERT INTO post (parent,author,message,thread,forum, created, path) VALUES ($1,$2,$3,$4,$5,$6, (SELECT path from post where id = $1) || (select currval('post_id_seq')::integer)) RETURNING id, created";
 	}
 	rows := t.DBConnection.QueryRow(insertQuery, body.Parent, body.Author, body.Message, slug, forumName, body.Created)
-	if rows == nil || rows.Err() != nil{
+	if rows == nil {
 		return nil, models.NoSuchUser
 	}
 	result := new(models.PostModel)
 	scanErr := rows.Scan(&result.ID, &result.Created)
 	if scanErr != nil{
-		return nil, models.InternalDBError
+		return nil, models.NoSuchUser
 	}
 	result.Author = body.Author
 	result.Message = body.Message
@@ -99,7 +99,7 @@ func (t *ThreadRepository) CheckParentsExisting(parentsID uint64, slug uint64) (
 
 	query := "SELECT id from post where id = $1 and thread = $2"
 	counter := t.DBConnection.QueryRow(query, parentsID, slug)
-	if counter == nil || counter.Err() != nil{
+	if counter == nil {
 		return false, models.InternalDBError
 	}
 	var parentsCounter int = 0
@@ -119,7 +119,7 @@ func (t *ThreadRepository) GetThreadDetails(slug uint64) (*models.ThreadModel, e
 
 	query := "SELECT v1.ID, v1.title, v1.author, v1.forum, v1.message, v1.votes_counter, v1.created, v1.slug FROM thread v1 where ID = $1"
 	resultRow := t.DBConnection.QueryRow(query, slug)
-	if resultRow.Err() != nil{
+	if resultRow == nil{
 		return nil, models.ThreadAbsentsError
 	}
 	resultItem := new(models.ThreadModel)
@@ -141,7 +141,7 @@ func (t *ThreadRepository) GetThreadDetailsBySlug(slug string) (*models.ThreadMo
 
 	query := "SELECT v1.ID, v1.title, v1.author, v1.forum, v1.message, v1.votes_counter, v1.created, v1.slug FROM thread v1 where slug = $1"
 	resultRow := t.DBConnection.QueryRow(query, slug)
-	if resultRow.Err() != nil{
+	if resultRow == nil{
 		return nil, models.ThreadAbsentsError
 	}
 	resultItem := new(models.ThreadModel)

@@ -1,13 +1,13 @@
 package thread
 
 import (
-	"database/sql"
 	"fmt"
 	"github.com/Felix1Green/DB-project/internal/pkg/thread"
 	"github.com/Felix1Green/DB-project/internal/pkg/thread/Delivery"
 	"github.com/Felix1Green/DB-project/internal/pkg/thread/repository"
 	"github.com/Felix1Green/DB-project/internal/pkg/thread/usecase"
 	"github.com/gorilla/mux"
+	"github.com/jackc/pgx"
 	"net/http"
 )
 
@@ -32,7 +32,7 @@ func configureRouter(handler *Delivery.ThreadDelivery) *mux.Router{
 }
 
 
-func Start(conn *sql.DB) *Service{
+func Start(conn *pgx.ConnPool) *Service{
 	rep := repository.NewThreadRepository(conn)
 	uc := usecase.NewThreadUseCase(rep)
 	handler := Delivery.NewThreadDelivery(uc)

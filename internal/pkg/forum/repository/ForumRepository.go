@@ -1,17 +1,18 @@
 package repository
 
 import (
-	"database/sql"
 	"github.com/Felix1Green/DB-project/internal/pkg/models"
 	"github.com/Felix1Green/DB-project/internal/pkg/utils"
+	"github.com/go-openapi/strfmt"
+	"github.com/jackc/pgx"
 	"strings"
 )
 
 type ForumRepository struct {
-	dbConnection *sql.DB
+	dbConnection *pgx.ConnPool
 }
 
-func NewForumRepository(connection *sql.DB) *ForumRepository{
+func NewForumRepository(connection *pgx.ConnPool) *ForumRepository{
 	return &ForumRepository{
 		dbConnection: connection,
 	}
@@ -71,8 +72,8 @@ func (t *ForumRepository) CreateForumThread(slug string, thread *models.ThreadRe
 
 	result := t.dbConnection.QueryRow(query, queryArgs...)
 	var resultID uint64
-	var created string
-	if result.Err() != nil || result.Scan(&resultID, &created) != nil{
+	var created strfmt.DateTime
+	if err := result.Scan(&resultID, &created); err != nil{
 		resultThread := new(models.ThreadModel)
 		scanErr := t.dbConnection.QueryRow(uniqueErrQuery, thread.Slug).Scan(&resultThread.ID, &resultThread.Title,
 			&resultThread.Author, &resultThread.Forum,&resultThread.Message, &resultThread.Votes, &resultThread.Created, &resultThread.Slug)
@@ -89,9 +90,9 @@ func (t *ForumRepository) CreateForumThread(slug string, thread *models.ThreadRe
 		Title: thread.Title,
 		Author: thread.Author,
 		Message: thread.Message,
-		Created: created,
 		Slug: thread.Slug,
 		Votes: 0,
+		Created: created,
 		Forum: slug,
 	}, nil
 }
@@ -115,7 +116,7 @@ func (t *ForumRepository) GetForumUsers(slug string, limit int, since string, de
 		return nil, models.ForumDoesntExists
 	}
 
-	defer func(){_ = rows.Close()}()
+	defer func(){rows.Close()}()
 	resultList := make([]models.User, 0)
 	for rows.Next(){
 		userModel := new(models.User)
@@ -157,7 +158,7 @@ func (t *ForumRepository) GetForumThreads(slug string, limit int, since string, 
 	}
 	resultList := make([]models.ThreadModel, 0)
 	defer func() {
-		_ = rows.Close()
+		rows.Close()
 	}()
 	for rows.Next(){
 		model := new(models.ThreadModel)

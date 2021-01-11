@@ -1,16 +1,15 @@
 package main
 
 import (
-	"database/sql"
 	"errors"
 	"flag"
-	"fmt"
 	"github.com/Felix1Green/DB-project/internal/app/cleaner"
 	"github.com/Felix1Green/DB-project/internal/app/forum"
 	"github.com/Felix1Green/DB-project/internal/app/post"
 	"github.com/Felix1Green/DB-project/internal/app/thread"
 	"github.com/Felix1Green/DB-project/internal/app/users"
 	"github.com/Felix1Green/DB-project/internal/pkg/utils"
+	"github.com/jackc/pgx"
 	_ "github.com/lib/pq"
 	"log"
 	"net/http"
@@ -27,17 +26,22 @@ type ServerConfig struct{
 }
 
 
-func CreateDBConnection(config *utils.ServiceConfig)(*sql.DB,error){
-	psqlInfo := fmt.Sprintf("postgres://%v:%v@%v:%v/%v?sslmode=disable",
-		config.DatabaseUser, config.DatabasePassword, config.DatabaseDomain, config.DatabasePort,
-		config.DatabaseName)
-
-	PostgreSQLConnection, DBErr := sql.Open("postgres", psqlInfo)
-	if DBErr != nil {
+func CreateDBConnection(config *utils.ServiceConfig)(*pgx.ConnPool,error){
+	pool, err := pgx.NewConnPool(pgx.ConnPoolConfig{
+		ConnConfig: pgx.ConnConfig{
+			User:     config.DatabaseUser,
+			Password: config.DatabasePassword,
+			Port:     uint16(config.DatabasePort),
+			Database: config.DatabaseName,
+			Host: config.DatabaseDomain,
+		},
+		MaxConnections: 50,
+	})
+	if err != nil {
 		return nil, errors.New("no postgresql connection")
 	}
 
-	return PostgreSQLConnection, nil
+	return pool, nil
 }
 
 func ParseConfigPath() string {
@@ -47,7 +51,7 @@ func ParseConfigPath() string {
 	return configPath
 }
 
-func InitService(sqlConn *sql.DB) *ServerConfig{
+func InitService(sqlConn *pgx.ConnPool) *ServerConfig{
 	statusService := cleaner.Start(sqlConn)
 	usersService := users.Start(sqlConn)
 	forumService := forum.Start(sqlConn, usersService.Repository)
@@ -105,7 +109,7 @@ func main(){
 
 	defer func() {
 		if conn != nil{
-			_ = conn.Close()
+			conn.Close()
 		}
 	}()
 }

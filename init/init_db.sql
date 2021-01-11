@@ -67,7 +67,6 @@ create table post
 CREATE INDEX index_post_forum_fk on post(forum);
 CREATE INDEX index_post_author_fk on post(author);
 CREATE INDEX index_post_thread_fk on post(thread);
-CREATE INDEX index_post_info on post(parent, author, message, forum, thread, created,isEdited);
 CREATE INDEX index_post_path_info on post(thread, path);
 CREATE INDEX index_post_path_parent_info on post((path[1]), path);
 

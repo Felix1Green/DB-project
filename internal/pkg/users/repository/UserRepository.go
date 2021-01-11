@@ -1,17 +1,16 @@
 package repository
 
 import (
-	"database/sql"
 	"fmt"
 	"github.com/Felix1Green/DB-project/internal/pkg/models"
-	//"github.com/lib/pq"
+	"github.com/jackc/pgx"
 )
 
 type UserRepository struct {
-	dbConnection *sql.DB
+	dbConnection *pgx.ConnPool
 }
 
-func NewUsersRepository(conn *sql.DB) *UserRepository{
+func NewUsersRepository(conn *pgx.ConnPool) *UserRepository{
 	return &UserRepository{
 		dbConnection: conn,
 	}
@@ -27,7 +26,7 @@ func (t *UserRepository) CreateUser(nickname string, user *models.UserRequestBod
 		if dbErr != nil || result.Err() != nil {
 			return nil, models.IncorrectInputParams
 		}
-		defer func(){_ = result.Close()}()
+		defer func(){result.Close()}()
 		for result.Next() {
 			instance := new(models.User)
 			_ = result.Scan(&instance.Nickname, &instance.FullName, &instance.About, &instance.Email)
@@ -47,7 +46,7 @@ func (t *UserRepository) CreateUser(nickname string, user *models.UserRequestBod
 func (t *UserRepository) GetProfile(nickname string) (*models.User, error) {
 	query := "SELECT nickname, fullname, about, email FROM users where nickname = $1"
 	result := t.dbConnection.QueryRow(query, nickname)
-	if result.Err() != nil {
+	if result == nil {
 		return nil, models.NoSuchUser
 	}
 	UserInstance := new(models.User)
@@ -87,14 +86,10 @@ func (t *UserRepository) UpdateProfile(nickname string, user *models.UserRequest
 	}
 	query += fmt.Sprintf("where nickname=$%d returning nickname, fullname, about, email", counter)
 	queryArgs = append(queryArgs, nickname)
-	result := t.dbConnection.QueryRow(query, queryArgs...)
-	if result.Err() != nil {
-		return nil, models.UserConflict
-	}
 	item := new(models.User)
-	scanErr := result.Scan(&item.Nickname, &item.FullName, &item.About, &item.Email)
+	scanErr := t.dbConnection.QueryRow(query, queryArgs...).Scan(&item.Nickname, &item.FullName, &item.About, &item.Email)
 	if scanErr != nil || nickname == "" {
-		return nil, models.NoSuchUser
+		return nil, models.UserConflict
 	}
 
 	return item, nil

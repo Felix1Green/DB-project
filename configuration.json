@@ -3,7 +3,7 @@
   "Port": 5000,
   "Database": {
     "Domain": "127.0.0.1",
-    "Port": "5432",
+    "Port": 5432,
     "User": "main_user",
     "Password": "some_password",
     "Name":"ForumDatabase"

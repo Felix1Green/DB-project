@@ -1,15 +1,15 @@
 package repository
 
 import (
-	"database/sql"
 	"github.com/Felix1Green/DB-project/internal/pkg/models"
+	"github.com/jackc/pgx"
 )
 
 type PostRepository struct {
-	dbConnection *sql.DB
+	dbConnection *pgx.ConnPool
 }
 
-func NewPostRepository(connection *sql.DB) *PostRepository{
+func NewPostRepository(connection *pgx.ConnPool) *PostRepository{
 	return &PostRepository{dbConnection: connection}
 }
 
