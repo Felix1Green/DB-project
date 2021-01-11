@@ -20,7 +20,7 @@ func NewThreadUseCase(repository thread.Repository) *ThreadUseCase{
 func (t *ThreadUseCase) CreatePosts(slug string, body *[]models.PostCreateRequestInput) (*[]models.PostModel, error) {
 	result := make([]models.PostModel,0)
 
-	th, err := t.GetThreadDetails(slug)
+	th, err := t.GetThreadID(slug)
 	if err != nil {
 		return nil, err
 	}
@@ -41,6 +41,16 @@ func (t *ThreadUseCase) CreatePosts(slug string, body *[]models.PostCreateReques
 	}
 
 	return &result, nil
+}
+func (t *ThreadUseCase) GetThreadID(slug string) (*models.ThreadModel, error){
+	th, err := strconv.Atoi(slug)
+	threadID := uint64(th)
+	if err != nil{
+		resp, err :=  t.repository.CheckThreadExistingBySlug(slug)
+		return resp, err
+	}
+	resp, err := t.repository.CheckThreadExisting(threadID)
+	return resp, err
 }
 
 func (t *ThreadUseCase) GetThreadDetails(slug string) (*models.ThreadModel, error){

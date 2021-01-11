@@ -1,11 +1,3 @@
-ALTER SYSTEM SET wal_buffers = '6912kB';
-ALTER SYSTEM SET default_statistics_target = '100';
-ALTER SYSTEM SET effective_io_concurrency = '200';
-ALTER SYSTEM SET max_worker_processes = '4';
-ALTER SYSTEM SET max_parallel_workers_per_gather = '2';
-ALTER SYSTEM SET max_parallel_workers = '4';
-ALTER SYSTEM SET max_parallel_maintenance_workers = '2';
-
 CREATE EXTENSION IF NOT EXISTS citext;
 
 create table users
@@ -45,7 +37,7 @@ create table thread
     created timestamp with time zone default now()
 );
 
-CREATE INDEX index_thread_forum_fk on thread(forum);
+CREATE INDEX index_thread_forum_fk on thread(id, forum);
 CREATE INDEX index_thread_info on thread(forum, created);
 
 

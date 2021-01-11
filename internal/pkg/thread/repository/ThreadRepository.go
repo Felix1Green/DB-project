@@ -134,6 +134,42 @@ func (t *ThreadRepository) GetThreadDetails(slug uint64) (*models.ThreadModel, e
 	return resultItem, nil
 }
 
+func (t *ThreadRepository) CheckThreadExisting(slug uint64) (*models.ThreadModel, error){
+	if t.DBConnection == nil{
+		return nil, models.InternalDBError
+	}
+
+	query := "SELECT v1.ID, v1.forum FROM thread v1 where ID = $1"
+	resultRow := t.DBConnection.QueryRow(query, slug)
+	if resultRow == nil{
+		return nil, models.ThreadAbsentsError
+	}
+	th := new(models.ThreadModel)
+	ScanErr := resultRow.Scan(&th.ID, &th.Forum)
+	if ScanErr != nil{
+		return nil, models.ThreadAbsentsError
+	}
+	return th, nil
+}
+
+func (t *ThreadRepository) CheckThreadExistingBySlug(slug string) (*models.ThreadModel, error){
+	if t.DBConnection == nil{
+		return nil, models.InternalDBError
+	}
+
+	query := "SELECT v1.ID, v1.forum FROM thread v1 where slug = $1"
+	resultRow := t.DBConnection.QueryRow(query, slug)
+	if resultRow == nil{
+		return nil, models.ThreadAbsentsError
+	}
+	res := new(models.ThreadModel)
+	ScanErr := resultRow.Scan(&res.ID, &res.Forum)
+	if ScanErr != nil{
+		return nil, models.ThreadAbsentsError
+	}
+	return res, nil
+}
+
 func (t *ThreadRepository) GetThreadDetailsBySlug(slug string) (*models.ThreadModel, error){
 	if t.DBConnection == nil{
 		return nil, models.InternalDBError

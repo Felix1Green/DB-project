@@ -11,4 +11,6 @@ type Repository interface{
 	GetThreadDetailsBySlug(slug string) (*models.ThreadModel, error)
 	CreateSinglePost(slug uint64, forumName string, body models.PostCreateRequestInput)(*models.PostModel, error)
 	CheckParentsExisting(parentsID uint64, slug uint64) (bool,error)
+	CheckThreadExisting(slug uint64) (*models.ThreadModel, error)
+	CheckThreadExistingBySlug(slug string) (*models.ThreadModel, error)
 }
