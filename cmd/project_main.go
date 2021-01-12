@@ -35,7 +35,7 @@ func CreateDBConnection(config *utils.ServiceConfig)(*pgx.ConnPool,error){
 			Database: config.DatabaseName,
 			Host: config.DatabaseDomain,
 		},
-		MaxConnections: 15,
+		MaxConnections: 50,
 	})
 	if err != nil {
 		return nil, errors.New("no postgresql connection")

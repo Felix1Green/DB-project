@@ -24,7 +24,7 @@ create unlogged table forum
 (
     id serial not null primary key,
     title varchar(128) not null,
-    user_id citext references users(nickname),
+    user_id citext not null,
     slug citext not null unique,
     threads int not null default 0,
     posts int not null default 0
@@ -37,9 +37,9 @@ create unlogged table thread
 (
     id serial not null primary key ,
     title varchar(128) not null,
-    author citext references users(nickname),
+    author citext not null,
     message text,
-    forum citext references forum(slug),
+    forum citext not null,
     votes_counter int default 0,
     slug citext unique,
     created timestamp with time zone default now()
@@ -53,16 +53,15 @@ create unlogged table post
 (
     id serial primary key ,
     parent int not null ,
-    author citext references users(nickname),
+    author citext not null,
     message text,
     isEdited boolean default false,
-    forum citext references forum(slug),
+    forum citext not null,
     thread int references thread(id),
     created timestamp with time zone default now(),
     path integer [] default '{0}':: INTEGER []
 );
 
-CREATE INDEX index_post_forum_fk on post(forum);
 CREATE INDEX index_post_thread_fk on post(thread);
 CREATE INDEX index_post_path_parent_info on post((path[1]), path);
 
