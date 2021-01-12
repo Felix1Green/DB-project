@@ -26,7 +26,7 @@ create unlogged table forum
 (
     id serial not null primary key,
     title varchar(128) not null,
-    user_id citext references users(nickname),
+    user_id citext not null,
     slug citext not null unique,
     threads int not null default 0,
     posts int not null default 0
@@ -39,9 +39,9 @@ create unlogged table thread
 (
     id serial not null primary key ,
     title varchar(128) not null,
-    author citext,
+    author citext not null,
     message text,
-    forum citext,
+    forum citext not null,
     votes_counter int default 0,
     slug citext unique,
     created timestamp with time zone default now()
@@ -54,10 +54,10 @@ create unlogged table post
 (
     id serial primary key ,
     parent int not null ,
-    author citext references users(nickname),
+    author citext not null,
     message text,
     isEdited boolean default false,
-    forum citext,
+    forum citext not null,
     thread int,
     created timestamp with time zone default now(),
     path int [] default '{0}':: int []

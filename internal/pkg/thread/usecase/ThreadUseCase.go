@@ -74,21 +74,11 @@ func (t *ThreadUseCase) GetThreadPosts(threadSlug string, limit int, since int64
 		sort = "flat"
 	}
 
-	th, err := strconv.Atoi(threadSlug)
-	threadID := uint64(th)
+	th, err := t.GetThreadID(threadSlug)
 	if err != nil{
-		threadObj, err := t.repository.GetThreadDetailsBySlug(threadSlug)
-		if err != nil{
-			return nil, models.ThreadDoesntExist
-		}
-		threadID = threadObj.ID
-	}else{
-		_, err := t.repository.GetThreadDetails(threadID)
-		if err != nil{
-			return nil, models.ThreadDoesntExist
-		}
+		return nil, err
 	}
-	return t.repository.GetThreadPosts(threadID, limit, since, sort, desc)
+	return t.repository.GetThreadPosts(th.ID, limit, since, sort, desc)
 }
 
 func (t *ThreadUseCase) SetThreadVote(threadSlug string, input models.ThreadVoteInput) (*models.ThreadModel, error){
