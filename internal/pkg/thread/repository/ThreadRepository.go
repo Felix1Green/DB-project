@@ -6,6 +6,7 @@ import (
 	"github.com/Felix1Green/DB-project/internal/pkg/utils"
 	"github.com/jackc/pgx"
 	"strings"
+	"time"
 )
 
 
@@ -23,10 +24,16 @@ func bulkPostInsert(rows []models.PostCreateRequestInput, query, forumName strin
 	ValueStrings := make([]interface{}, 0)
 	QueryStrings := make([]string, 0)
 	i := 0
+	t := time.Now()
 	for _, val := range rows {
-		QueryStrings = append(QueryStrings, fmt.Sprintf("($%d, $%d, $%d, $%d, $%d)",
-			i*5+1, i*5+2, i*5+3, i*5+4, i*5+5))
-		ValueStrings = append(ValueStrings, val.Parent, val.Author, val.Message, threadID, forumName)
+		if val.Parent == 0{
+			QueryStrings = append(QueryStrings, fmt.Sprintf("($%d, $%d, $%d, $%d, $%d, $%d)\n",
+				i*6+1, i*6+2, i*6+3, i*6+4, i*6+5, i*6+6))
+		}else{
+			QueryStrings = append(QueryStrings, fmt.Sprintf("($%d, $%d, $%d, $%d, $%d, $%d)\n",
+				i*6+1, i*6+2, i*6+3, i*6+4, i*6+5, i*6+6))
+		}
+		ValueStrings = append(ValueStrings, val.Parent, val.Author, val.Message, threadID, forumName, t)
 		i++
 	}
 	smtp := fmt.Sprintf(query, strings.Join(QueryStrings, ","))
@@ -39,16 +46,16 @@ func (t* ThreadRepository) CreatePosts(slug uint64, forumName string, body *[]mo
 		return nil, models.InternalDBError
 	}
 
-	insertQuery := "INSERT INTO post (parent,author,message,thread,forum) VALUES %s"
+	insertQuery := "INSERT INTO post (parent,author,message,thread,forum, created) VALUES %s"
 	resultQuery, values := bulkPostInsert(*body, insertQuery, forumName, slug)
 	resultQuery += " RETURNING id, created"
 	rows, DBErr := t.DBConnection.Query(resultQuery, *values...)
 	if DBErr != nil || rows == nil || rows.Err() != nil{
-		return nil, models.ParentPostDoesntExists
+		return nil, models.NoSuchUser
 	}
 	resultList := make([]models.PostModel, 0)
 	for i := 0; rows.Next(); i++{
-		item := models.PostModel{}
+		item := new(models.PostModel)
 		ScanErr := rows.Scan(&item.ID, &item.Created)
 		if ScanErr != nil{
 			return nil, ScanErr
@@ -58,7 +65,13 @@ func (t* ThreadRepository) CreatePosts(slug uint64, forumName string, body *[]mo
 		item.Parent = (*body)[i].Parent
 		item.Forum = forumName
 		item.Thread = slug
-		resultList = append(resultList, item)
+		resultList = append(resultList, *item)
+	}
+	if rows.Err() != nil{
+		if strings.Contains(rows.Err().Error(),"Parent not exists"){
+			return nil, models.ParentPostDoesntExists
+		}
+		return nil, models.NoSuchUser
 	}
 	return &resultList, nil
 }
@@ -243,13 +256,14 @@ func (t *ThreadRepository) GetThreadPosts(threadID uint64, limit int, since int6
 	return &resultList, nil
 }
 
-func (t *ThreadRepository) IncrementThreadVotes(threadID uint64) error{
+func (t *ThreadRepository) GetVote(threadID uint64, userNickname string) (int,error) {
 	if t.DBConnection == nil{
-		return models.InternalDBError
+		return 0, models.InternalDBError
 	}
-	query := "UPDATE thread SET votes_counter = (select sum(rating) from vote where thread_id = $1) WHERE id = $1"
-	_, DBErr := t.DBConnection.Exec(query, threadID)
-	return DBErr
+	query := "SELECT rating from vote where thread_id = $1 and user_name = $2"
+	rating := 0
+	DBErr := t.DBConnection.QueryRow(query, threadID, userNickname).Scan(&rating)
+	return rating, DBErr
 }
 
 func (t *ThreadRepository) SetThreadVote(threadID uint64, input models.ThreadVoteInput) (*models.ThreadModel, error){

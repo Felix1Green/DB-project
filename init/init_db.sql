@@ -1,6 +1,17 @@
+ALTER SYSTEM SET checkpoint_completion_target = '0.9';
+ALTER SYSTEM SET wal_buffers = '6912kB';
+ALTER SYSTEM SET default_statistics_target = '100';
+ALTER SYSTEM SET effective_io_concurrency = '200';
+ALTER SYSTEM SET max_worker_processes = '4';
+ALTER SYSTEM SET max_parallel_workers_per_gather = '2';
+ALTER SYSTEM SET max_parallel_workers = '4';
+ALTER SYSTEM SET max_parallel_maintenance_workers = '2';
+ALTER SYSTEM SET random_page_cost = '0.1';
+ALTER SYSTEM SET seq_page_cost = '0.1';
+
 CREATE EXTENSION IF NOT EXISTS citext;
 
-create table users
+create unlogged table users
 (
     id serial not null primary key,
     nickname citext not null unique,
@@ -10,9 +21,8 @@ create table users
 );
 
 CREATE INDEX index_get_users_info on users(nickname, fullname, about, email);
-CREATE INDEX index_users_nickname on users USING hash(nickname);
 
-create table forum
+create unlogged table forum
 (
     id serial not null primary key,
     title varchar(128) not null,
@@ -25,40 +35,39 @@ create table forum
 CREATE INDEX index_forum_user_fk on forum(user_id);
 CREATE INDEX index_forum_info on forum(slug, title, user_id);
 
-create table thread
+create unlogged table thread
 (
     id serial not null primary key ,
     title varchar(128) not null,
-    author citext references users(nickname),
+    author citext,
     message text,
-    forum citext references forum(slug),
+    forum citext,
     votes_counter int default 0,
     slug citext unique,
     created timestamp with time zone default now()
 );
-
-CREATE INDEX index_thread_forum_fk on thread(id, forum);
+CREATE INDEX index_thread_forum_fk on thread(forum);
 CREATE INDEX index_thread_info on thread(forum, created);
 
 
-create table post
+create unlogged table post
 (
     id serial primary key ,
     parent int not null ,
     author citext references users(nickname),
     message text,
     isEdited boolean default false,
-    forum citext references forum(slug),
-    thread int references thread(id),
+    forum citext,
+    thread int,
     created timestamp with time zone default now(),
-    path integer [] default '{0}':: INTEGER []
+    path int [] default '{0}':: int []
 );
 
-CREATE INDEX index_post_forum_fk on post(forum);
-CREATE INDEX index_post_thread_fk on post(thread);
-CREATE INDEX index_post_path_parent_info on post((path[1]), path);
+CREATE INDEX index_post_thread_fk on post(id, thread);
+CREATE INDEX index_post_thread_path on post(thread, path);
+CREATE INDEX index_post_thread_first_path on post((path[1]), path);
 
-create table vote
+create unlogged table vote
 (
     id serial not null primary key ,
     thread_id int not null,
@@ -68,7 +77,7 @@ create table vote
 );
 
 
-create table forum_users(
+create unlogged table forum_users(
     id serial primary key,
     forum citext not null references forum(slug),
     user_nickname citext not null references users(nickname),
@@ -129,3 +138,34 @@ create trigger update_thread_vote
     after update on vote
     for each row
     execute procedure update_thread_vote();
+
+
+
+CREATE OR REPLACE FUNCTION update_path()
+    RETURNS TRIGGER AS
+$BODY$
+DECLARE
+    parent_path         INT[];
+    first_parent_thread INT;
+BEGIN
+    IF (new.parent = 0) THEN
+        NEW.path := ARRAY(select new.id::integer);
+    ELSE
+        SELECT thread, path
+        FROM post
+        WHERE thread = NEW.thread AND id = NEW.parent
+        INTO first_parent_thread, parent_path;
+        IF NOT FOUND THEN
+            RAISE EXCEPTION 'Parent not exists' USING ERRCODE = '00404';
+        END IF ;
+        NEW.path := parent_path || NEW.id;
+    END IF;
+    RETURN NEW;
+END;
+$BODY$ LANGUAGE plpgsql;
+
+CREATE TRIGGER path_updater
+    BEFORE INSERT
+    ON post
+    FOR EACH ROW
+EXECUTE PROCEDURE update_path();

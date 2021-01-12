@@ -13,4 +13,5 @@ type Repository interface{
 	CheckParentsExisting(parentsID uint64, slug uint64) (bool,error)
 	CheckThreadExisting(slug uint64) (*models.ThreadModel, error)
 	CheckThreadExistingBySlug(slug string) (*models.ThreadModel, error)
+	GetVote(threadID uint64, userNickname string) (int,error)
 }

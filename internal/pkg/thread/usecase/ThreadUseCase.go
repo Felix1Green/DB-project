@@ -4,7 +4,6 @@ import (
 	"github.com/Felix1Green/DB-project/internal/pkg/models"
 	"github.com/Felix1Green/DB-project/internal/pkg/thread"
 	"strconv"
-	"time"
 )
 
 type ThreadUseCase struct {
@@ -18,29 +17,19 @@ func NewThreadUseCase(repository thread.Repository) *ThreadUseCase{
 }
 
 func (t *ThreadUseCase) CreatePosts(slug string, body *[]models.PostCreateRequestInput) (*[]models.PostModel, error) {
-	result := make([]models.PostModel,0)
-
 	th, err := t.GetThreadID(slug)
 	if err != nil {
 		return nil, err
 	}
-	timeString := time.Now()
-	for _, val := range *body{
-		if val.Parent != 0{
-			avail, err := t.repository.CheckParentsExisting(val.Parent, th.ID)
-			if !avail || err != nil{
-				return nil, err
-			}
-		}
-		val.Created = timeString
-		post, err := t.repository.CreateSinglePost(th.ID, th.Forum, val)
-		if err != nil{
-			return nil, err
-		}
-		result = append(result, *post)
+	if len(*body) < 1{
+		res := make([]models.PostModel, 0)
+		return &res, nil
 	}
-
-	return &result, nil
+	post, err := t.repository.CreatePosts(th.ID, th.Forum, body)
+	if err != nil{
+		return nil, err
+	}
+	return post, nil
 }
 func (t *ThreadUseCase) GetThreadID(slug string) (*models.ThreadModel, error){
 	th, err := strconv.Atoi(slug)
@@ -103,15 +92,9 @@ func (t *ThreadUseCase) GetThreadPosts(threadSlug string, limit int, since int64
 }
 
 func (t *ThreadUseCase) SetThreadVote(threadSlug string, input models.ThreadVoteInput) (*models.ThreadModel, error){
-	th, castErr := strconv.Atoi(threadSlug)
-	threadID := uint64(th)
-	if castErr != nil{
-		threadObj, err := t.repository.GetThreadDetailsBySlug(threadSlug)
-		if err != nil{
-			return nil, models.ThreadDoesntExist
-		}
-		threadID = threadObj.ID
+	th, err := t.GetThreadID(threadSlug)
+	if err != nil{
+		return nil, models.ThreadAbsentsError
 	}
-	resp, err :=  t.repository.SetThreadVote(threadID, input)
-	return resp, err
+	return t.repository.SetThreadVote(th.ID, input)
 }
