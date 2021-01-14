@@ -33,6 +33,7 @@ create unlogged table forum
 );
 
 CREATE INDEX index_forum_user_fk on forum(user_id);
+create index index_forum_pokr on forum(title,user_id, slug, threads, posts);
 CREATE INDEX index_forum_info on forum(slug, title, user_id);
 
 create unlogged table thread
@@ -46,7 +47,10 @@ create unlogged table thread
     slug citext unique,
     created timestamp with time zone default now()
 );
+CREATE INDEX index_thread_user_fk on thread(author);
 CREATE INDEX index_thread_forum_fk on thread(forum);
+create index index_thread_slug on thread(slug);
+create index index_thread_pokr on thread(title, author, forum, message, votes_counter, created, slug);
 CREATE INDEX index_thread_info on thread(forum, created);
 
 
@@ -63,6 +67,7 @@ create unlogged table post
     path int [] default '{0}':: int []
 );
 
+create index index_post_author_fk on post(author);
 CREATE INDEX index_post_thread_fk on post(id, thread);
 CREATE INDEX index_post_thread_path on post(thread, path);
 CREATE INDEX index_post_thread_first_path on post((path[1]), path);
